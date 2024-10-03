@@ -1,6 +1,5 @@
 layout:
-  qmk_keyboard: glove80
-  qmk_layout: null
+  qmk_info_json: layouts/rusty-glove-layout.json
 layers:
   base:
   - - tap: ws1

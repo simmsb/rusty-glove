@@ -256,11 +256,11 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1727968888,
-        "narHash": "sha256-rQ8ZIhQtOh3DP/mp9Az0h2DPM4o4J/3aQhSwg+7ZX20=",
+        "lastModified": 1727971249,
+        "narHash": "sha256-pO5/w/r/HmAbqR8zhvZLpDamfcyBRVPpyRTLRMErzLc=",
         "owner": "simmsb",
         "repo": "keylayout",
-        "rev": "c6c675791b4498f692003daff2be5ceb310f38c0",
+        "rev": "2bae24de06d9a6ae39daab3a96af645ddb309174",
         "type": "github"
       },
       "original": {

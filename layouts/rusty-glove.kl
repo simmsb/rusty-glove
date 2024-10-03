@@ -16,7 +16,7 @@ options rusty_dilemma {
 }
 
 options keymap_drawer {
-  qmk_keyboard: "glove80";
+  qmk_info_json: "layouts/rusty-glove-layout.json";
 }
 
 key ctrldown {
