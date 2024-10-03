@@ -1,6 +1,6 @@
 # Rust firmware for the Glove80 keyboard
 
-https://github.com/user-attachments/assets/1223476b-7622-4224-8fc1-0153b41fe684
+https://github.com/user-attachments/assets/92c6a0cc-923c-43d2-8932-4119070cfd70
 
 Rusty glove is firmware for the Glove80 split keyboard written in Rust
 using the Embassy framework.
