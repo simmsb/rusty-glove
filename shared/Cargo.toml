@@ -1,0 +1,19 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitfield-struct = "0.8.0"
+crc32fast = { version = "1.4.2", default-features = false }
+defmt = { version = ">=0.3", optional = true }
+fnv = { version = "1.0.7", default-features = false }
+heapless = { version = "0.7.0", features = ["serde"] }
+log = "0.4.22"
+postcard = { version = "1.0.10", features = ["experimental-derive"] }
+serde = { version = "1.0.209", features = ["derive"], default-features = false }
+
+[features]
+defmt = ["dep:defmt", "heapless/defmt-impl"]

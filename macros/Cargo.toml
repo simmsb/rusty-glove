@@ -1,0 +1,18 @@
+[package]
+name = "dilemma_macros"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
+phf_codegen = "0.11.1"
+proc-macro-crate = { git = "https://github.com/bkchr/proc-macro-crate", rev = "89166accf43a380a7a8e66c2eea20ce4fd9dae8f", version = "2.0.1" }
+# proc-macro-crate = "2.0.1"
+proc-macro2 = "1.0.70"
+quote = "1.0.28"
+syn = "2.0.18"

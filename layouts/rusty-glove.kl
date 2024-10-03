@@ -1,0 +1,114 @@
+layout {
+  5k 1s 1s 5k;
+  6k 6k;
+  6k 6k;
+  6k 6k;
+  6k 6k;
+  5k 1s 1s 5k;
+  3s 3k 3k 3s;
+  3s 3k 3k 3s;
+}
+
+options rusty_dilemma {
+  hold_tap_timeout: "400";
+  hold_tap_interval: "200";
+  custom_event: "super::CustomEvent";
+}
+
+options keymap_drawer {
+  qmk_keyboard: "corne_rotated";
+  qmk_layout: "LAYOUT_split_3x5_3";
+}
+
+key ctrldown {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Down].as_slice())";
+  out keymap_drawer: "Ctrl+Down";
+}
+
+key ctrlup {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Up].as_slice())";
+  out keymap_drawer: "Ctrl+Up";
+}
+
+key metax {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LGui, ::keyberon::key_code::KeyCode::X].as_slice())";
+  out keymap_drawer: "M-x";
+}
+
+key toad {
+  out keyberon: "::keyberon::action::Action::Custom(super::CustomEvent::TypeUnicode(\"𓆏\"))";
+  out keymap_drawer: "𓆏 ";
+}
+
+key ws1 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb1].as_slice())";
+  out keymap_drawer: "ws1";
+}
+
+key ws2 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb2].as_slice())";
+  out keymap_drawer: "ws2";
+}
+
+key ws3 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb3].as_slice())";
+  out keymap_drawer: "ws3";
+}
+
+key ws4 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb4].as_slice())";
+  out keymap_drawer: "ws4";
+}
+
+key ws5 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb5].as_slice())";
+  out keymap_drawer: "ws5";
+}
+
+key ws6 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb6].as_slice())";
+  out keymap_drawer: "ws6";
+}
+
+key ws7 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb7].as_slice())";
+  out keymap_drawer: "ws7";
+}
+
+key opt_enter {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LAlt, ::keyberon::key_code::KeyCode::Space].as_slice())";
+  out keymap_drawer: "opt-enter";
+}
+
+layer base {
+  ws1     ws2       ws3    ws4    ws5                                ws6          ws7            n            n      n;
+  '='     '1'       '2'    '3'    '4'        '5'    '6'              '7'          '8'            '9'          '0'    '\';
+  '`'     'q' >esc< 'w'    'e'    'r'        't'    'y'     >bspace< 'u'    >del< 'i'      >'/'< 'o'    >'\'< 'p'    ''';
+  lshift  'a'       's'    'd'    'f'        'g'    'h'     >'<'<    'j'    >':'< 'k'      >'>'< 'l'          ';'    rshift;
+  lctrl   'z'       'x'    'c'    'v'        'b'    'n'     >'"'<    'm'    >'''< ','      >'_'< '.'          '/'    rctrl;
+  n       n         metax  f6     opt_enter                          '('          '['            ']'          ')'    n;
+                           esc    lgui       lalt   ralt             bspace       del;
+                           [sym]  tab        space  space            enter        [num];
+}
+
+layer sym {
+  n       n         n      n      n                                  n            n              n            n      n;
+  f1      f2        f3     f4     f5         f6     f7               f8           f9             f10          n      n;
+  n       '!'       '@'    '{'    '}'        '|'    '`'              '~'          '\'            n            '"'    n;
+  lshift  '#'       '$'    '('    ')'        toad   '+'              '-'          '/'            '*'          '''    rshift;
+  lctrl   '%'       '^'    '['    ']'        n      '&'              '='          ','            '.'          '_'    rctrl;
+  n       n         n      n      n                                  n            n              n            n      n;
+                           esc    lgui       n      n                n            n;
+                           lalt   tab        space  space            enter        ralt;
+}
+
+layer num {
+  n       n         n      n      n                                  n            n              n            n      n;
+  n       n         n      n      n          n      n                n            n              n            n      n;
+  n       '1'       '2'    '3'    '4'        '5'    '6'              '7'          '8'            '9'          '0'    n;
+  lshift  f1        f2     f3     f4         f5     volup            left         down           up           right  rshift;
+  lctrl   f6        f7     f8     f9         f10    voldown          pgdown       ctrldown       ctrlup       pgup   rctrl;
+  n       n         n      n      n                                  n            n              n            n      n;
+                           esc    lgui       n      n                n            n;
+                           lalt   tab        space  space            enter        ralt;
+}
