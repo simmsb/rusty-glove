@@ -20,6 +20,15 @@
 
     uf2.url = "github:microsoft/uf2";
     uf2.flake = false;
+
+    keymap-drawer = {
+      url = "github:caksoylar/keymap-drawer";
+      flake = false;
+    };
+    poetry2nix = {
+      url = "github:nix-community/poetry2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -36,6 +45,16 @@
       ];
       perSystem = { config, pkgs, system, lib, ... }:
         let
+          poetry2nix = inputs.poetry2nix.lib.mkPoetry2Nix {inherit pkgs;};
+
+          keymap-drawer = poetry2nix.mkPoetryApplication {
+            projectDir = inputs.keymap-drawer;
+            preferWheels = true;
+            meta = {
+              mainProgram = "keymap";
+            };
+          };
+
           uf2conv = pkgs.writeScriptBin "uf2conv" ''
             ${pkgs.python3}/bin/python ${inputs.uf2}/utils/uf2conv.py $*
           '';
@@ -120,7 +139,7 @@
           };
 
           devShells.default = craneLib.devShell {
-            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs ];
+            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs keymap-drawer ];
           };
         };
     };

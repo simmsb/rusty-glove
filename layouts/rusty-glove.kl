@@ -16,8 +16,7 @@ options rusty_dilemma {
 }
 
 options keymap_drawer {
-  qmk_keyboard: "corne_rotated";
-  qmk_layout: "LAYOUT_split_3x5_3";
+  qmk_keyboard: "glove80";
 }
 
 key ctrldown {

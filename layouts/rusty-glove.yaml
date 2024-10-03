@@ -1,0 +1,325 @@
+layout:
+  qmk_keyboard: glove80
+  qmk_layout: null
+layers:
+  base:
+  - - tap: ws1
+    - tap: ws2
+    - tap: ws3
+    - tap: ws4
+    - tap: ws5
+    - tap: ws6
+    - tap: ws7
+    - {}
+    - {}
+    - {}
+  - - tap: '= '
+    - tap: '1 '
+    - tap: '2 '
+    - tap: '3 '
+    - tap: '4 '
+    - tap: '5 '
+    - tap: '6 '
+    - tap: '7 '
+    - tap: '8 '
+    - tap: '9 '
+    - tap: '0 '
+    - tap: '\ '
+  - - tap: Tab
+    - tap: 'q '
+    - tap: 'w '
+    - tap: 'e '
+    - tap: 'r '
+    - tap: 't '
+    - tap: 'y '
+    - tap: 'u '
+    - tap: 'i '
+    - tap: 'o '
+    - tap: 'p '
+    - tap: ''' '
+  - - tap: LShift
+    - tap: 'a '
+    - tap: 's '
+    - tap: 'd '
+    - tap: 'f '
+    - tap: 'g '
+    - tap: 'h '
+    - tap: 'j '
+    - tap: 'k '
+    - tap: 'l '
+    - tap: '; '
+    - tap: RShift
+  - - tap: LCtrl
+    - tap: 'z '
+    - tap: 'x '
+    - tap: 'c '
+    - tap: 'v '
+    - tap: 'b '
+    - tap: 'n '
+    - tap: 'm '
+    - tap: ', '
+    - tap: '. '
+    - tap: '/ '
+    - tap: RCtrl
+  - - {}
+    - {}
+    - tap: M-x
+    - tap: F6
+    - tap: opt-enter
+    - tap: '( '
+    - tap: '[ '
+    - tap: '] '
+    - tap: ') '
+    - {}
+  - - tap: Escape
+    - tap: LGui
+    - tap: LAlt
+    - tap: RAlt
+    - tap: BSpace
+    - tap: Delete
+  - - tap: sym
+    - tap: Tab
+    - tap: Space
+    - tap: Space
+    - tap: Enter
+    - tap: num
+  sym:
+  - - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+  - - tap: F1
+    - tap: F2
+    - tap: F3
+    - tap: F4
+    - tap: F5
+    - tap: F6
+    - tap: F7
+    - tap: F8
+    - tap: F9
+    - tap: F10
+    - {}
+    - {}
+  - - {}
+    - tap: '! '
+    - tap: '@ '
+    - tap: '{ '
+    - tap: '} '
+    - tap: '| '
+    - tap: '` '
+    - tap: '~ '
+    - tap: '\ '
+    - {}
+    - tap: '" '
+    - {}
+  - - tap: LShift
+    - tap: '# '
+    - tap: '$ '
+    - tap: '( '
+    - tap: ') '
+    - tap: '𓆏 '
+    - tap: '+ '
+    - tap: '- '
+    - tap: '/ '
+    - tap: '* '
+    - tap: ''' '
+    - tap: RShift
+  - - tap: LCtrl
+    - tap: '% '
+    - tap: '^ '
+    - tap: '[ '
+    - tap: '] '
+    - {}
+    - tap: '& '
+    - tap: '= '
+    - tap: ', '
+    - tap: '. '
+    - tap: '_ '
+    - tap: RCtrl
+  - - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+  - - tap: Escape
+    - tap: LGui
+    - {}
+    - {}
+    - {}
+    - {}
+  - - tap: LAlt
+    - tap: Tab
+    - tap: Space
+    - tap: Space
+    - tap: Enter
+    - tap: RAlt
+  num:
+  - - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+  - - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+  - - {}
+    - tap: '1 '
+    - tap: '2 '
+    - tap: '3 '
+    - tap: '4 '
+    - tap: '5 '
+    - tap: '6 '
+    - tap: '7 '
+    - tap: '8 '
+    - tap: '9 '
+    - tap: '0 '
+    - {}
+  - - tap: LShift
+    - tap: F1
+    - tap: F2
+    - tap: F3
+    - tap: F4
+    - tap: F5
+    - tap: VolUp
+    - tap: Left
+    - tap: Down
+    - tap: Up
+    - tap: Right
+    - tap: RShift
+  - - tap: LCtrl
+    - tap: F6
+    - tap: F7
+    - tap: F8
+    - tap: F9
+    - tap: F10
+    - tap: VolDown
+    - tap: PgDown
+    - tap: Ctrl+Down
+    - tap: Ctrl+Up
+    - tap: PgUp
+    - tap: RCtrl
+  - - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+    - {}
+  - - tap: Escape
+    - tap: LGui
+    - {}
+    - {}
+    - {}
+    - {}
+  - - tap: LAlt
+    - tap: Tab
+    - tap: Space
+    - tap: Space
+    - tap: Enter
+    - tap: RAlt
+combos:
+- key_positions:
+  - 23
+  - 24
+  key:
+    tap: Escape
+  layers:
+  - base
+- key_positions:
+  - 28
+  - 29
+  key:
+    tap: BSpace
+  layers:
+  - base
+- key_positions:
+  - 29
+  - 30
+  key:
+    tap: Delete
+  layers:
+  - base
+- key_positions:
+  - 30
+  - 31
+  key:
+    tap: '/ '
+  layers:
+  - base
+- key_positions:
+  - 31
+  - 32
+  key:
+    tap: '\ '
+  layers:
+  - base
+- key_positions:
+  - 40
+  - 41
+  key:
+    tap: '< '
+  layers:
+  - base
+- key_positions:
+  - 41
+  - 42
+  key:
+    tap: ': '
+  layers:
+  - base
+- key_positions:
+  - 42
+  - 43
+  key:
+    tap: '> '
+  layers:
+  - base
+- key_positions:
+  - 52
+  - 53
+  key:
+    tap: '" '
+  layers:
+  - base
+- key_positions:
+  - 53
+  - 54
+  key:
+    tap: ''' '
+  layers:
+  - base
+- key_positions:
+  - 54
+  - 55
+  key:
+    tap: '_ '
+  layers:
+  - base
