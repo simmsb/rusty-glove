@@ -20,7 +20,8 @@ use super::{
     RGB_CMD_CHANNEL,
 };
 
-const MAX_LEVEL: u8 = 220;
+const MAX_LEVEL: u8 = 240;
+// I use Kailh sunsets on my glove80, this compensates for that
 const COLOUR_CORRECTION: ColorRGB = ColorRGB::new(190, 200, 255);
 const FADE_DURATION: Duration = Duration::from_secs(3);
 
