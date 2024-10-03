@@ -83,7 +83,7 @@ key opt_enter {
 layer base {
   ws1     ws2       ws3    ws4    ws5                                ws6          ws7            n            n      n;
   '='     '1'       '2'    '3'    '4'        '5'    '6'              '7'          '8'            '9'          '0'    '\';
-  '`'     'q' >esc< 'w'    'e'    'r'        't'    'y'     >bspace< 'u'    >del< 'i'      >'/'< 'o'    >'\'< 'p'    ''';
+  tab     'q' >esc< 'w'    'e'    'r'        't'    'y'     >bspace< 'u'    >del< 'i'      >'/'< 'o'    >'\'< 'p'    ''';
   lshift  'a'       's'    'd'    'f'        'g'    'h'     >'<'<    'j'    >':'< 'k'      >'>'< 'l'          ';'    rshift;
   lctrl   'z'       'x'    'c'    'v'        'b'    'n'     >'"'<    'm'    >'''< ','      >'_'< '.'          '/'    rctrl;
   n       n         metax  f6     opt_enter                          '('          '['            ']'          ')'    n;

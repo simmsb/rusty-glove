@@ -16,6 +16,7 @@
     parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
     keylayout.url = "github:simmsb/keylayout";
+    elf2uf2.url = "github:simmsb/elf2uf2-rs";
 
     uf2.url = "github:microsoft/uf2";
     uf2.flake = false;
@@ -114,11 +115,12 @@
             inherit system;
             overlays = [
               inputs.keylayout.overlays.default
+              inputs.elf2uf2.overlays.default
             ];
           };
 
           devShells.default = craneLib.devShell {
-            packages = with pkgs; [ libiconv just keylayout_lang uf2conv ];
+            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs ];
           };
         };
     };
