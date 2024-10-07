@@ -41,9 +41,6 @@ use utils::log;
 
 use crate::keys::ScannerInstance;
 
-#[cfg(feature = "binaryinfo")]
-pub mod binary_info;
-pub mod event;
 mod flash;
 pub mod interboard;
 pub mod keys;
@@ -58,6 +55,8 @@ pub mod side;
 mod sync;
 pub mod usb;
 pub mod utils;
+pub mod state;
+mod ble;
 
 pub fn set_status_led(value: Level) {
     // unsafe { ManuallyDrop::new(Output::new(PIN_17::steal(), value)).set_level(value) };
@@ -95,9 +94,18 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
     sd.run_with_callback(|event: SocEvent| {
         log::debug!("SD event: {:?}", event);
         match event {
-            SocEvent::PowerUsbRemoved => software_vbus.detected(false),
-            SocEvent::PowerUsbDetected => software_vbus.detected(true),
-            SocEvent::PowerUsbPowerReady => software_vbus.ready(),
+            SocEvent::PowerUsbRemoved => {
+                software_vbus.detected(false);
+                state::USB_CONNECTED.set(false);
+            },
+            SocEvent::PowerUsbDetected => {
+                software_vbus.detected(true);
+                state::USB_CONNECTED.set(true);
+            },
+            SocEvent::PowerUsbPowerReady => {
+                software_vbus.ready();
+                state::USB_CONNECTED.set(true);
+            },
             _ => {}
         };
     })
@@ -186,10 +194,13 @@ pub async fn main(spawner: Spawner) {
     //     check_bootloader();
     // }
 
-    let ble_server = if !side::is_master() {
-        Some(interboard::make_server(sd))
+    if side::is_master() {
+        interboard::init_central(&spawner, sd);
     } else {
-        None
+        let interboard_server = interboard::make_server(sd);
+        let host_server = ble::make_nonhid_server(sd);
+        interboard::init_peripheral(&spawner, sd, interboard_server);
+        ble::init_peripheral(&spawner, sd, host_server);
     };
 
     spawner.must_spawn(softdevice_task(sd));
@@ -212,12 +223,6 @@ pub async fn main(spawner: Spawner) {
     logger::init();
 
     rng::init(sd).await;
-
-    if side::is_master() {
-        interboard::init_central(&spawner, sd);
-    } else {
-        interboard::init_peripheral(&spawner, sd, ble_server.unwrap());
-    }
 
     flash::init(nrf_softdevice::Flash::take(sd)).await;
 

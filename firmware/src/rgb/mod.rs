@@ -31,26 +31,6 @@ pub fn init(spawner: &Spawner, pwm: PWM0, pin: AnyPin) {
     }
 }
 
-
-
-// pub fn init(spawner: &Spawner, i2s: I2S,
-//             pin: AnyPin,
-//             irq: impl Binding<interrupt::typelevel::I2S, i2s::InterruptHandler<I2S>> + 'static,
-//             unused_1: AnyPin,
-//             unused_2: AnyPin,
-//             unused_3: AnyPin,
-// ) {
-//     let d = driver::Ws2812::new(i2s, irq, pin, unused_1, unused_2, unused_3);
-
-//     spawner.must_spawn(runner::rgb_runner(d));
-//     spawner.must_spawn(command_listener());
-
-//     if side::is_master() {
-//         spawner.must_spawn(animation_randomizer());
-//     }
-// }
-
-
 #[embassy_executor::task]
 async fn command_listener() {
     let mut sub = THIS_SIDE_MESSAGE_BUS.subscriber().unwrap();

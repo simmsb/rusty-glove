@@ -8,7 +8,7 @@ use nrf_softdevice::{
 };
 use postcard::experimental::max_size::MaxSize;
 
-use crate::messages::device_to_device::DeviceToDevice;
+use crate::{messages::device_to_device::DeviceToDevice, state::with_advertising};
 
 use super::ble::CENTRAL_ADDRESS;
 
@@ -77,7 +77,8 @@ pub async fn advertisement_loop(
 
         crate::log::debug!("Beginning to advertise");
 
-        let conn = match advertise_connectable(sd, adv, &Default::default()).await {
+        let conn = match with_advertising(advertise_connectable(sd, adv, &Default::default())).await
+        {
             Ok(conn) => conn,
             Err(err) => {
                 crate::log::error!("Failed to advertise? {}", err);

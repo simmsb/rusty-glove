@@ -1,3 +1,5 @@
+use core::cell::Cell;
+
 use embassy_sync::blocking_mutex::raw::{RawMutex, ThreadModeRawMutex};
 use maitake_sync::blocking::{ConstInit, ScopedRawMutex};
 
@@ -32,4 +34,50 @@ pub type WaitQueue = maitake_sync::WaitQueue<ThreadModeScopedMutex>;
 
 pub const fn mutex<T>(data: T) -> Mutex<T> {
     Mutex::new_with_raw_mutex(data, ThreadModeScopedMutex::INIT)
+}
+
+/// Something that stores a current value and allows receivers to wait for it to
+/// change.
+///
+/// This doesn't ensure every reader sees every change, only that each reader is
+/// woken when a change occurs
+pub struct Watch<T: Clone> {
+    data: maitake_sync::blocking::Mutex<T, ThreadModeScopedMutex>,
+    queue: WaitQueue,
+}
+
+impl<T: Clone> Watch<T> {
+    pub const fn new(initial: T) -> Self {
+        Self {
+            data: maitake_sync::blocking::Mutex::new_with_raw_mutex(
+                initial,
+                ThreadModeScopedMutex::INIT,
+            ),
+            queue: WaitQueue::new_with_raw_mutex(ThreadModeScopedMutex::INIT),
+        }
+    }
+
+    pub fn current(&self) -> T {
+        self.data.with_lock(|x| x.clone())
+    }
+
+    pub async fn wait(&self) -> T {
+        self.queue.wait().await.unwrap();
+        self.current()
+    }
+
+    pub async fn wait_for(&self, mut f: impl FnMut(&T) -> bool) -> T {
+        self.queue
+            .wait_for_value(|| {
+                let v = self.current();
+                f(&v).then_some(v)
+            })
+            .await
+            .unwrap()
+    }
+
+    pub fn set(&self, new: T) {
+        self.data.with_lock(|x| *x = new);
+        self.queue.wake_all();
+    }
 }

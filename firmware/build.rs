@@ -9,28 +9,13 @@ use std::path::PathBuf;
 fn main() {
     // Put `memory.x` in our output directory and ensure it's
     // on the linker search path.
-    let memory_x = if env::var("CARGO_FEATURE_BOOTLOADER").is_ok() {
-        include_bytes!("memory.x").as_slice()
-    } else {
-        include_bytes!("memory.nobl.x").as_slice()
-    };
-
-    let memory_x_extra = if env::var("CARGO_FEATURE_BINARYINFO").is_ok() {
-        if env::var("CARGO_FEATURE_BOOTLOADER").is_ok() {
-            panic!("binaryinfo won't be visible if the bootloader is enabled, use the binaryinfo feature of the bootloader")
-        }
-
-        include_bytes!("memory.binaryinfo.x").as_slice()
-    } else {
-        &[]
-    };
+    let memory_x = include_bytes!("memory.x").as_slice();
 
     let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
     {
         let mut memory_x_f = File::create(out.join("memory.x")).unwrap();
 
         memory_x_f.write_all(memory_x).unwrap();
-        memory_x_f.write_all(memory_x_extra).unwrap();
     }
     File::create(out.join("build_date.txt"))
         .unwrap()

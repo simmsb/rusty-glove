@@ -3,6 +3,7 @@ use core::any::TypeId;
 use ekv::flash::{self, PageID};
 use ekv::{config, Database};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_time::Timer;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use nrf_softdevice::{Flash, FlashError};
 use once_cell::sync::OnceCell;
@@ -32,10 +33,22 @@ pub async fn init(flash: Flash) {
     DB.set(db).ok().unwrap();
 }
 
+async fn get_db() -> &'static Database<DbFlash, ThreadModeRawMutex> {
+    loop {
+        if let Some(db) = DB.get() {
+            return db
+        }
+
+        // we could do some fancy waitqueue system here or actually
+        // topologically order task startups but this is simpler
+        Timer::after_millis(10).await;
+    }
+}
+
 pub async fn set<T: core::any::Any + serde::Serialize>(value: &T) -> Option<()> {
     let mut buf = [0u8; ekv::config::MAX_VALUE_SIZE];
     let buf = postcard::to_slice(value, &mut buf).ok()?;
-    let mut tx = DB.get().unwrap().write_transaction().await;
+    let mut tx = get_db().await.write_transaction().await;
 
     // convert the typeid of the key to a byte array
     let key = unsafe {
@@ -51,7 +64,7 @@ pub async fn set<T: core::any::Any + serde::Serialize>(value: &T) -> Option<()> 
 pub async fn get<T: core::any::Any + serde::de::DeserializeOwned>() -> Option<T> {
     let mut buf = [0u8; ekv::config::MAX_VALUE_SIZE];
 
-    let tx = DB.get().unwrap().read_transaction().await;
+    let tx = get_db().await.read_transaction().await;
 
     // convert the typeid of the key to a byte array
     let key = unsafe {

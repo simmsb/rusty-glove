@@ -1765,11 +1765,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 
 [[package]]
-name = "rp-binary-info"
-version = "0.1.0"
-source = "git+https://github.com/rp-rs/rp-binary-info.git#141069dd1685885d35ce2eaa3b345b19288f56e4"
-
-[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1851,7 +1846,6 @@ dependencies = [
  "portable-atomic",
  "postcard",
  "rand",
- "rp-binary-info",
  "serde",
  "shared",
  "static_cell",
