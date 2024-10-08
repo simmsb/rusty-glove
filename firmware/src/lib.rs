@@ -21,12 +21,9 @@
 
 use embassy_executor::Spawner;
 use embassy_nrf::{
-    bind_interrupts,
-    config::{HfclkSource, LfclkSource},
-    gpio::{Input, Level, Output, OutputDrive, Pin, Pull},
-    interrupt::InterruptExt,
-    usb::vbus_detect::SoftwareVbusDetect,
+    bind_interrupts, config::{HfclkSource, LfclkSource}, gpio::{Input, Level, Output, OutputDrive, Pin, Pull}, interrupt::InterruptExt, usb::vbus_detect::SoftwareVbusDetect
 };
+use embassy_time::Timer;
 use nrf_softdevice::Softdevice;
 
 #[cfg(feature = "reboot_on_panic")]
@@ -110,6 +107,16 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
         };
     })
     .await
+}
+
+// Keeps our system alive
+#[embassy_executor::task]
+async fn watchdog_task() {
+    let mut handle = unsafe { embassy_nrf::wdt::WatchdogHandle::steal(0) };
+    loop {
+        handle.pet();
+        Timer::after_secs(4).await;
+    }
 }
 
 bind_interrupts!(struct UsbIrqs {
@@ -204,6 +211,7 @@ pub async fn main(spawner: Spawner) {
     };
 
     spawner.must_spawn(softdevice_task(sd));
+    spawner.must_spawn(watchdog_task());
 
     set_status_led(Level::High);
 
