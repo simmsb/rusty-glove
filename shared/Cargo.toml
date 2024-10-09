@@ -10,10 +10,10 @@ bitfield-struct = "0.8.0"
 crc32fast = { version = "1.4.2", default-features = false }
 defmt = { version = ">=0.3", optional = true }
 fnv = { version = "1.0.7", default-features = false }
-heapless = { version = "0.7.0", features = ["serde"] }
+heapless = { version = "0.8.0", features = ["serde"] }
 log = "0.4.22"
-postcard = { version = "1.0.10", features = ["experimental-derive"] }
+postcard = { git = "https://github.com/iron-fish/postcard.git", rev = "ab978e84d783290c26a4a801f71072bb9381f97b", features = ['experimental-derive'] }
 serde = { version = "1.0.209", features = ["derive"], default-features = false }
 
 [features]
-defmt = ["dep:defmt", "heapless/defmt-impl"]
+defmt = ["dep:defmt", "heapless/defmt-03"]

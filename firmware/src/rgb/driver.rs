@@ -1,10 +1,14 @@
 use bytemuck::{Pod, Zeroable};
 use cichlid::ColorRGB;
 use embassy_nrf::{
-    gpio::{OutputDrive, Pin as GpioPin}, i2s::{self, MasterClock, MultiBuffering, OutputStream}, interrupt::typelevel::Binding, pwm::{
+    gpio::{OutputDrive, Pin as GpioPin},
+    i2s::{self, MasterClock, MultiBuffering, OutputStream},
+    interrupt::typelevel::Binding,
+    pwm::{
         Config, Instance, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
         SingleSequencer,
-    }, Peripheral
+    },
+    Peripheral,
 };
 use embassy_time::Timer;
 
@@ -13,7 +17,6 @@ use super::layout::NUM_LEDS;
 // const NUM_INITIAL_RESETS: usize = 10;
 // const NUM_RESETS: usize = 10;
 // const NUM_SAMPLES: usize = NUM_LEDS as usize * 3 + NUM_RESETS + NUM_INITIAL_RESETS;
-
 
 // static RGB_TO_I2S: [i32; 256] = {
 //     let mut table = [0i32; 256];
@@ -69,7 +72,6 @@ use super::layout::NUM_LEDS;
 
 //     table
 // };
-
 
 // pub struct Ws2812<P: i2s::Instance> {
 //     i2s: OutputStream<'static, P, i32, 1, NUM_SAMPLES>

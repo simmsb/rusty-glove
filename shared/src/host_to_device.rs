@@ -3,8 +3,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::side::KeyboardSide;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Debug)]
-#[derive(postcard::experimental::max_size::MaxSize)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Hash,
+    Clone,
+    Debug,
+    postcard::experimental::max_size::MaxSize,
+)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HostToDevice {
     /// Side the message should end up on, if None then both
@@ -18,7 +26,15 @@ impl HostToDevice {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Debug)]
-#[derive(postcard::experimental::max_size::MaxSize)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Hash,
+    Clone,
+    Debug,
+    postcard::experimental::max_size::MaxSize,
+)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HostToDeviceMsg {}

@@ -26,7 +26,17 @@
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use nrf_softdevice::{ble::{gatt_server::{builder::ServiceBuilder, characteristic::{Attribute, Metadata, Properties}, CharacteristicHandles, RegisterError}, Uuid}, Softdevice};
+use nrf_softdevice::{
+    ble::{
+        gatt_server::{
+            builder::ServiceBuilder,
+            characteristic::{Attribute, Metadata, Properties},
+            CharacteristicHandles, RegisterError,
+        },
+        Uuid,
+    },
+    Softdevice,
+};
 
 const DEVICE_INFORMATION: Uuid = Uuid::new_16(0x180a);
 const BATTERY_SERVICE: Uuid = Uuid::new_16(0x180f);
@@ -69,7 +79,11 @@ pub struct DeviceInformation {
 pub struct DeviceInformationService {}
 
 impl DeviceInformationService {
-    pub fn new(sd: &mut Softdevice, pnp_id: Option<&PnPID>, info: DeviceInformation) -> Result<Self, RegisterError> {
+    pub fn new(
+        sd: &mut Softdevice,
+        pnp_id: Option<&PnPID>,
+        info: DeviceInformation,
+    ) -> Result<Self, RegisterError> {
         let mut sb = ServiceBuilder::new(sd, DEVICE_INFORMATION)?;
 
         if let Some(pnp_id) = pnp_id {
@@ -101,10 +115,17 @@ impl DeviceInformationService {
         }
     }
 
-    fn add_pnp_characteristic(sb: &mut ServiceBuilder, pnp_id: &PnPID) -> Result<CharacteristicHandles, RegisterError> {
+    fn add_pnp_characteristic(
+        sb: &mut ServiceBuilder,
+        pnp_id: &PnPID,
+    ) -> Result<CharacteristicHandles, RegisterError> {
         // SAFETY: `PnPID` is `repr(C, packed)` so viewing it as an immutable slice of bytes is safe.
-        let val =
-            unsafe { core::slice::from_raw_parts(pnp_id as *const _ as *const u8, core::mem::size_of::<PnPID>()) };
+        let val = unsafe {
+            core::slice::from_raw_parts(
+                pnp_id as *const _ as *const u8,
+                core::mem::size_of::<PnPID>(),
+            )
+        };
 
         let attr = Attribute::new(val);
         let md = Metadata::new(Properties::new().read());

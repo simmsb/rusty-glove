@@ -3,6 +3,7 @@ use core::any::TypeId;
 use ekv::flash::{self, PageID};
 use ekv::{config, Database};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use nrf_softdevice::{Flash, FlashError};
@@ -11,15 +12,15 @@ use rand::Rng;
 
 use crate::rng::MyRng;
 
-struct MkSend<T>(T);
+pub struct MkSend<T>(pub T);
 
 unsafe impl<T> Send for MkSend<T> {}
 
 static DB: OnceCell<Database<DbFlash, ThreadModeRawMutex>> = OnceCell::new();
 
-pub async fn init(flash: Flash) {
+pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
     let flash = DbFlash {
-        flash: crate::sync::mutex(MkSend(flash)),
+        flash,
         start: unsafe { &__config_start as *const u32 as usize },
     };
     let mut cfg = ekv::Config::default();
@@ -36,7 +37,7 @@ pub async fn init(flash: Flash) {
 async fn get_db() -> &'static Database<DbFlash, ThreadModeRawMutex> {
     loop {
         if let Some(db) = DB.get() {
-            return db
+            return db;
         }
 
         // we could do some fancy waitqueue system here or actually
@@ -88,7 +89,7 @@ struct AlignedBuf<const N: usize>([u8; N]);
 
 struct DbFlash {
     start: usize,
-    flash: crate::sync::Mutex<MkSend<Flash>>,
+    flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>,
 }
 
 impl flash::Flash for DbFlash {

@@ -18,34 +18,24 @@ pub trait WhichDebug = ::core::marker::Sized;
 
 pub mod noop_log {
     macro_rules! info {
-        ($($x:tt)*) => {
-
-        };
+        ($($x:tt)*) => {};
     }
     macro_rules! debug {
-        ($($x:tt)*) => {
-
-        };
+        ($($x:tt)*) => {};
     }
     macro_rules! trace {
-        ($($x:tt)*) => {
-
-        };
+        ($($x:tt)*) => {};
     }
 
     macro_rules! error {
-        ($($x:tt)*) => {
-
-        };
+        ($($x:tt)*) => {};
     }
 
-    pub(crate) use {info, debug, trace, error};
+    pub(crate) use {debug, error, info, trace};
 }
 
 #[cfg(not(any(feature = "logging", feature = "probe")))]
 pub use noop_log as log;
-
-
 
 #[macro_export]
 macro_rules! singleton {

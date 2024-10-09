@@ -2,7 +2,6 @@ use core::future::Future;
 
 use crate::sync::{mutex, Mutex, Watch};
 
-
 pub static USB_CONNECTED: Watch<bool> = Watch::new(false);
 
 pub async fn wait_usb_connected() {

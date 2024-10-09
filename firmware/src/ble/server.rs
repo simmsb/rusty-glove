@@ -1,24 +1,36 @@
-use nrf_softdevice::{ble::gatt_server::Server, Softdevice};
+use nrf_softdevice::{
+    ble::gatt_server::{Server, Service},
+    Softdevice,
+};
 
-use super::device_info::{DeviceInformation, DeviceInformationService, PnPID};
+use super::{
+    device_info::{DeviceInformation, DeviceInformationService, PnPID},
+    dfu::NrfDfuService,
+};
 
 // TODO battinfo
 // TODO fwupd
 
 pub struct NonHIDServer {
     _dis: DeviceInformationService,
+    pub dfu: NrfDfuService,
 }
 
 impl NonHIDServer {
     pub fn new(sd: &mut Softdevice) -> Self {
         let dis = device_info(sd, None);
+        let dfu = NrfDfuService::new(sd).unwrap();
 
-        Self { _dis: dis }
+        Self { _dis: dis, dfu }
     }
 }
 
+pub enum NonHIDEvent {
+    DFU(<NrfDfuService as Service>::Event),
+}
+
 impl Server for NonHIDServer {
-    type Event = ();
+    type Event = NonHIDEvent;
 
     fn on_write(
         &self,
@@ -28,6 +40,10 @@ impl Server for NonHIDServer {
         _offset: usize,
         data: &[u8],
     ) -> Option<Self::Event> {
+        if let Some(e) = self.dfu.on_write(handle, data) {
+            return Some(NonHIDEvent::DFU(e));
+        }
+
         None
     }
 }

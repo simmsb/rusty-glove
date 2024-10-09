@@ -15,29 +15,35 @@
     const_for,
     const_refs_to_static,
     async_closure,
-    array_chunks,
+    array_chunks
 )]
 
-
+use ble::dfu::DfuConfig;
 use embassy_executor::Spawner;
 use embassy_nrf::{
-    bind_interrupts, config::{HfclkSource, LfclkSource}, gpio::{Input, Level, Output, OutputDrive, Pin, Pull}, interrupt::InterruptExt, usb::vbus_detect::SoftwareVbusDetect
+    bind_interrupts,
+    config::{HfclkSource, LfclkSource},
+    gpio::{Input, Level, Output, OutputDrive, Pin, Pull},
+    interrupt::InterruptExt,
+    usb::vbus_detect::SoftwareVbusDetect,
 };
+use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
 use embassy_time::Timer;
 use nrf_softdevice::Softdevice;
 
-#[cfg(feature = "reboot_on_panic")]
-use panic_reset as _;
 #[cfg(feature = "probe")]
 use defmt_rtt as _;
 #[cfg(not(feature = "reboot_on_panic"))]
 use panic_probe as _;
+#[cfg(feature = "reboot_on_panic")]
+use panic_reset as _;
 
 use usb::VBUS_DETECT;
 use utils::log;
 
 use crate::keys::ScannerInstance;
 
+mod ble;
 mod flash;
 pub mod interboard;
 pub mod keys;
@@ -49,11 +55,10 @@ pub mod pins;
 pub mod rgb;
 pub mod rng;
 pub mod side;
+pub mod state;
 mod sync;
 pub mod usb;
 pub mod utils;
-pub mod state;
-mod ble;
 
 pub fn set_status_led(value: Level) {
     // unsafe { ManuallyDrop::new(Output::new(PIN_17::steal(), value)).set_level(value) };
@@ -94,15 +99,15 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
             SocEvent::PowerUsbRemoved => {
                 software_vbus.detected(false);
                 state::USB_CONNECTED.set(false);
-            },
+            }
             SocEvent::PowerUsbDetected => {
                 software_vbus.detected(true);
                 state::USB_CONNECTED.set(true);
-            },
+            }
             SocEvent::PowerUsbPowerReady => {
                 software_vbus.ready();
                 state::USB_CONNECTED.set(true);
-            },
+            }
             _ => {}
         };
     })
@@ -201,13 +206,19 @@ pub async fn main(spawner: Spawner) {
     //     check_bootloader();
     // }
 
+    let flash_mutex = singleton!(Mutex<ThreadModeRawMutex, flash::MkSend<nrf_softdevice::Flash>>,
+                                 Mutex::new(flash::MkSend(nrf_softdevice::Flash::take(sd)))
+    );
+
+    let dfuconfig = DfuConfig::new(flash_mutex);
+
     if side::is_master() {
         interboard::init_central(&spawner, sd);
     } else {
         let interboard_server = interboard::make_server(sd);
         let host_server = ble::make_nonhid_server(sd);
         interboard::init_peripheral(&spawner, sd, interboard_server);
-        ble::init_peripheral(&spawner, sd, host_server);
+        ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
     };
 
     spawner.must_spawn(softdevice_task(sd));
@@ -232,7 +243,7 @@ pub async fn main(spawner: Spawner) {
 
     rng::init(sd).await;
 
-    flash::init(nrf_softdevice::Flash::take(sd)).await;
+    flash::init(flash_mutex).await;
 
     rgb::init(&spawner, p.PWM0, pins::take_leds!(p).degrade());
     // rgb::init(&spawner, p.I2S, pins::take_leds!(p).degrade(), I2SIrqs,
@@ -267,6 +278,17 @@ pub async fn main(spawner: Spawner) {
     metrics::init(&spawner).await;
 
     log::info!("All set up, have fun :)");
+
+    {
+        let mut magic = embassy_boot::AlignedBuffer([0; 4]);
+        let mut state = embassy_boot_nrf::FirmwareState::new(dfuconfig.state(), &mut magic.0);
+        if let Err(e) = state.mark_booted().await {
+            crate::log::error!(
+                "afailed to mark successful booting (wed'll roll back on reboot): {}",
+                defmt::Debug2Format(&e)
+            )
+        }
+    }
 
     // allowing the main task to exit somehow causes the LED task to break?
     //
