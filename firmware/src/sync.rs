@@ -1,4 +1,4 @@
-use core::cell::Cell;
+#![allow(unused)]
 
 use embassy_sync::blocking_mutex::raw::{RawMutex, ThreadModeRawMutex};
 use maitake_sync::blocking::{ConstInit, ScopedRawMutex};

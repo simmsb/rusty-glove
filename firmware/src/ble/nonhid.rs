@@ -1,30 +1,27 @@
 use super::{dfu::DfuConfig, server::NonHIDServer};
 use crate::{
-    ble::{
-        bonder::{load_bonder, Bonder},
-        dfu::NrfDfuServiceEvent,
-    },
-    flash::MkSend,
+    ble::{bonder::Bonder, dfu::NrfDfuServiceEvent},
     state::{wait_usb_disconnected, with_advertising},
 };
 use embassy_boot::AlignedBuffer;
-use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel, mutex::Mutex};
+use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
 use nrf_dfu_target::prelude::{DfuStatus, FirmwareInfo, FirmwareType, HardwareInfo};
 use nrf_softdevice::{
     ble::{
         advertisement_builder::{
-            Flag, LegacyAdvertisementBuilder, LegacyAdvertisementPayload, ServiceUuid16,
+            AdvertisementDataType, Flag, LegacyAdvertisementBuilder, LegacyAdvertisementPayload, ServiceUuid16
         },
         gatt_server,
-        peripheral::{self, advertise_pairable, ConnectableAdvertisement},
+        peripheral::{self, advertise_connectable, ConnectableAdvertisement},
         HciStatus,
     },
-    Flash, Softdevice,
+    Softdevice,
 };
 
 pub async fn advertisement_loop_nonhid(
     sd: &Softdevice,
     server: &NonHIDServer,
+    #[allow(unused)]
     bonder: &'static Bonder,
     dfuconfig: DfuConfig,
 ) {
@@ -37,12 +34,13 @@ pub async fn advertisement_loop_nonhid(
                 ServiceUuid16::from_u16(0xFE59),
             ],
         )
+        .raw(AdvertisementDataType::APPEARANCE, &[0xC1, 0x03])
         .full_name("Glove80 LH")
         .build();
 
     static SCAN_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
         .services_16(
-            nrf_softdevice::ble::advertisement_builder::ServiceList::Complete,
+            nrf_softdevice::ble::advertisement_builder::ServiceList::Incomplete,
             &[
                 // TODO: battery
                 ServiceUuid16::DEVICE_INFORMATION,
@@ -68,7 +66,8 @@ pub async fn advertisement_loop_nonhid(
         };
 
         let conn = match embassy_futures::select::select(
-            with_advertising(advertise_pairable(sd, adv, &config, bonder)),
+            // with_advertising(advertise_pairable(sd, adv, &config, temp_bonder)),
+            with_advertising(advertise_connectable(sd, adv, &config)),
             wait_usb_disconnected(),
         )
         .await
@@ -77,8 +76,15 @@ pub async fn advertisement_loop_nonhid(
             embassy_futures::select::Either::Second(()) => continue,
         };
 
-        crate::log::info!("Device connected");
+        // bonder.load_sys_attrs(&conn);
 
+        crate::log::info!(
+            "Device connected: {} ({})",
+            conn.peer_address(),
+            conn.security_mode()
+        );
+
+        // unsure if this is needed?
         if let Err(e) = conn.request_security() {
             crate::log::info!("Failed to auth connection: {}", e);
             _ = conn.disconnect_with_reason(HciStatus::AUTHENTICATION_FAILURE);
@@ -87,8 +93,8 @@ pub async fn advertisement_loop_nonhid(
 
         let mut conn_handle = super::dfu::ConnectionHandle {
             connection: conn.clone(),
-            notify_control: true,
-            notify_packet: true,
+            notify_control: false,
+            notify_packet: false,
         };
 
         let hw_info = HardwareInfo {
@@ -109,7 +115,7 @@ pub async fn advertisement_loop_nonhid(
         let mut dfu = dfuconfig.dfu();
         let mut target = super::dfu::Target::new(dfu.size(), fw_info, hw_info);
 
-        let msg_chan = Channel::<ThreadModeRawMutex, NrfDfuServiceEvent, 4>::new();
+        let msg_chan = Channel::<ThreadModeRawMutex, NrfDfuServiceEvent, 16>::new();
 
         let command_processor = async {
             loop {
@@ -120,11 +126,13 @@ pub async fn advertisement_loop_nonhid(
                 // TODO: Updater seems to lock up, but I think that's because
                 // nrf_dfu_target is not replying properly
 
-                if let Some(DfuStatus::DoneReset) = server
+                let state = server
                     .dfu
                     .handle(&mut target, &mut dfu, &mut conn_handle, evt)
-                    .await
-                {
+                    .await;
+                crate::log::debug!("New dfu status: {}", defmt::Debug2Format(&state));
+
+                if let Some(DfuStatus::DoneReset) = state {
                     let mut magic = AlignedBuffer([0; 4]);
                     let mut state =
                         embassy_boot_nrf::FirmwareState::new(dfuconfig.state(), &mut magic.0);
@@ -155,5 +163,7 @@ pub async fn advertisement_loop_nonhid(
         });
 
         embassy_futures::select::select(command_processor, gatt).await;
+
+        crate::log::debug!("Device disconnected")
     }
 }

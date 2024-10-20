@@ -1,27 +1,36 @@
+use super::{
+    device_info::{DeviceInformation, DeviceInformationService, PnPID},
+    dfu::NrfDfuService,
+};
 use nrf_softdevice::{
     ble::gatt_server::{Server, Service},
     Softdevice,
 };
 
-use super::{
-    device_info::{DeviceInformation, DeviceInformationService, PnPID},
-    dfu::NrfDfuService,
-};
+
 
 // TODO battinfo
-// TODO fwupd
+
+#[nrf_softdevice::gatt_service(uuid = "20c41b22-8e4f-11ef-8ff7-e70548302449")]
+pub struct MarkerService {}
 
 pub struct NonHIDServer {
     _dis: DeviceInformationService,
+    _marker: MarkerService,
     pub dfu: NrfDfuService,
 }
 
 impl NonHIDServer {
     pub fn new(sd: &mut Softdevice) -> Self {
         let dis = device_info(sd, None);
+        let marker = MarkerService::new(sd).unwrap();
         let dfu = NrfDfuService::new(sd).unwrap();
 
-        Self { _dis: dis, dfu }
+        Self {
+            _dis: dis,
+            _marker: marker,
+            dfu,
+        }
     }
 }
 
@@ -41,6 +50,15 @@ impl Server for NonHIDServer {
         data: &[u8],
     ) -> Option<Self::Event> {
         if let Some(e) = self.dfu.on_write(handle, data) {
+            // match e {
+            //     super::dfu::NrfDfuServiceEvent::ControlCccdWrite { .. }
+            //     | super::dfu::NrfDfuServiceEvent::PacketCccdWrite { .. } => {
+            //         if let Some(bonder) = BONDER.get() {
+            //             bonder.save_sys_attrs(conn);
+            //         }
+            //     }
+            //     _ => {}
+            // };
             return Some(NonHIDEvent::DFU(e));
         }
 
@@ -57,7 +75,7 @@ fn device_info(sd: &mut Softdevice, pnp: Option<&PnPID>) -> DeviceInformationSer
             model_number: Some("1234"),
             serial_number: Some("0001"),
             hw_rev: Some("glove"),
-            fw_rev: Some("fill me in"),
+            fw_rev: Some(build_time::build_time_utc!()),
             sw_rev: None,
         },
     )

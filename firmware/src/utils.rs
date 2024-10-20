@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use core::{arch::asm, marker::PhantomData};
 
 #[cfg(feature = "probe")]
@@ -30,8 +32,6 @@ pub mod noop_log {
     macro_rules! error {
         ($($x:tt)*) => {};
     }
-
-    pub(crate) use {debug, error, info, trace};
 }
 
 #[cfg(not(any(feature = "logging", feature = "probe")))]
@@ -94,6 +94,12 @@ pub struct MeasuringExecutor {
 }
 
 const THREAD_PENDER: usize = usize::MAX;
+
+impl Default for MeasuringExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MeasuringExecutor {
     pub fn new() -> Self {
@@ -164,4 +170,74 @@ pub fn reboot_to_bootloader() -> ! {
 
     // 0x57 seems to be the magic to enter UF2 DFU
     // cortex_m::peripheral::SCB::sys_reset();
+}
+
+#[allow(unused)]
+pub fn debug_interrupts() {
+    {
+        const INTERRUPTS: &[Interrupt] = {
+            use embassy_nrf::interrupt::Interrupt::*;
+
+            &[
+                POWER_CLOCK,
+                RADIO,
+                UARTE0_UART0,
+                SPIM0_SPIS0_TWIM0_TWIS0_SPI0_TWI0,
+                SPIM1_SPIS1_TWIM1_TWIS1_SPI1_TWI1,
+                NFCT,
+                GPIOTE,
+                SAADC,
+                TIMER0,
+                TIMER1,
+                TIMER2,
+                RTC0,
+                TEMP,
+                RNG,
+                ECB,
+                CCM_AAR,
+                WDT,
+                RTC1,
+                QDEC,
+                COMP_LPCOMP,
+                SWI0_EGU0,
+                SWI1_EGU1,
+                SWI2_EGU2,
+                SWI3_EGU3,
+                SWI4_EGU4,
+                SWI5_EGU5,
+                TIMER3,
+                TIMER4,
+                PWM0,
+                PDM,
+                MWU,
+                PWM1,
+                PWM2,
+                SPIM2_SPIS2_SPI2,
+                RTC2,
+                I2S,
+                FPU,
+                USBD,
+                UARTE1,
+                QSPI,
+                CRYPTOCELL,
+                PWM3,
+                SPIM3,
+            ]
+        };
+
+        use embassy_nrf::interrupt::{Interrupt, InterruptExt};
+        for interrupt in INTERRUPTS {
+            let is_enabled = InterruptExt::is_enabled(*interrupt);
+            let priority = InterruptExt::get_priority(*interrupt);
+
+            if is_enabled {
+                crate::log::info!(
+                    "Interrupt {}: Enabled = {}, Priority = {}",
+                    defmt::Debug2Format(interrupt),
+                    is_enabled,
+                    priority
+                );
+            }
+        }
+    }
 }

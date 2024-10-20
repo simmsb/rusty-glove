@@ -10,7 +10,7 @@ use packed_struct::PrimitiveEnum;
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
 
 use crate::{
-    interboard::{self, THIS_SIDE_MESSAGE_BUS},
+    interboard::{self},
     messages::device_to_device::DeviceToDevice,
     side,
     usb::hid::publish_keyboard_report,

@@ -86,7 +86,7 @@ impl Animation for Rain {
                 x: I16F16::from_num(x),
                 y: I16F16::from_num(y),
                 instant: self.tick,
-                colour: self.colour.unwrap_or_else(|| rand_rainbow()),
+                colour: self.colour.unwrap_or_else(rand_rainbow),
             };
             let _ = self.splashes.push_front(splash);
         }

@@ -1,6 +1,5 @@
 use core::{cell::RefCell, num::Wrapping};
 
-use embassy_nrf::rng::Rng;
 use embassy_sync::blocking_mutex::{raw::ThreadModeRawMutex, Mutex};
 use embassy_time::Instant;
 use nrf_softdevice::Softdevice;
@@ -41,7 +40,7 @@ impl rand::RngCore for MyRng {
 
 pub async fn init(sd: &Softdevice) {
     let mut buf = [0u8; 8];
-    while let Err(_) = nrf_softdevice::random_bytes(sd, &mut buf) {
+    while nrf_softdevice::random_bytes(sd, &mut buf).is_err() {
         embassy_time::Timer::after_millis(10).await;
     }
     crate::log::debug!("Got random bytes: {=[u8; 8]}", buf);

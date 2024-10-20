@@ -10,10 +10,8 @@
     const_maybe_uninit_uninit_array,
     maybe_uninit_array_assume_init,
     const_maybe_uninit_array_assume_init,
-    const_mut_refs,
     const_maybe_uninit_write,
     const_for,
-    const_refs_to_static,
     async_closure,
     array_chunks
 )]
@@ -60,7 +58,7 @@ mod sync;
 pub mod usb;
 pub mod utils;
 
-pub fn set_status_led(value: Level) {
+pub fn set_status_led(_value: Level) {
     // unsafe { ManuallyDrop::new(Output::new(PIN_17::steal(), value)).set_level(value) };
 }
 
@@ -151,6 +149,8 @@ pub async fn main(spawner: Spawner) {
 
     embassy_nrf::interrupt::USBD.set_priority(embassy_nrf::interrupt::Priority::P2);
     embassy_nrf::interrupt::POWER_CLOCK.set_priority(embassy_nrf::interrupt::Priority::P2);
+    embassy_nrf::interrupt::PWM0.set_priority(embassy_nrf::interrupt::Priority::P2);
+    embassy_nrf::interrupt::RNG.set_priority(embassy_nrf::interrupt::Priority::P3);
 
     let p = embassy_nrf::init(config);
 
@@ -175,7 +175,7 @@ pub async fn main(spawner: Spawner) {
             adv_set_count: 1,
             periph_role_count: 4,
             central_role_count: 4,
-            central_sec_count: 0,
+            central_sec_count: 1,
             _bitfield_1: nrf_softdevice::raw::ble_gap_cfg_role_count_t::new_bitfield_1(0),
         }),
         gap_device_name: Some(nrf_softdevice::raw::ble_gap_cfg_device_name_t {

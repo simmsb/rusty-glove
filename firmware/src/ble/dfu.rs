@@ -1,6 +1,7 @@
 use crate::{flash::MkSend, log::*};
 use embassy_embedded_hal::flash::partition::Partition;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
+use embassy_time::Timer;
 use embedded_storage::nor_flash::ErrorType;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use heapless::Vec;
@@ -14,7 +15,7 @@ pub const MTU: usize = 120;
 // Aligned to 4 bytes + 3 bytes for header
 pub const ATT_MTU: usize = MTU + 3;
 
-pub type Target = DfuTarget<256>;
+pub type Target = DfuTarget<MTU>;
 
 #[nrf_softdevice::gatt_service(uuid = "FE59")]
 pub struct NrfDfuService {
@@ -22,7 +23,7 @@ pub struct NrfDfuService {
         uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50",
         write,
         notify,
-        security = "justworks"
+        // security = "justworks"
     )]
     control: Vec<u8, ATT_MTU>,
 
@@ -33,7 +34,7 @@ pub struct NrfDfuService {
         uuid = "8EC90002-F315-4F60-9FB8-838830DAEA50",
         write_without_response,
         notify,
-        security = "justworks"
+        // security = "justworks"
     )]
     packet: Vec<u8, ATT_MTU>,
 }
@@ -47,24 +48,34 @@ pub struct ConnectionHandle {
 impl NrfDfuService {
     async fn process<
         DFU: NorFlash,
-        F: FnOnce(&ConnectionHandle, &[u8]) -> Result<(), NotifyValueError>,
+        F: FnMut(&ConnectionHandle, &[u8]) -> Result<(), NotifyValueError>,
     >(
         &self,
         target: &mut Target,
         dfu: &mut DFU,
         conn: &mut ConnectionHandle,
         request: DfuRequest<'_>,
-        notify: F,
+        mut notify: F,
     ) -> DfuStatus {
         let (response, status) = target.process(request, dfu).await;
         let mut buf: [u8; 32] = [0; 32];
         match response.encode(&mut buf[..]) {
-            Ok(len) => match notify(&conn, &buf[..len]) {
-                Ok(_) => {}
-                Err(e) => {
-                    warn!("Error sending notification: {:?}", e);
+            Ok(len) => {
+                for _ in 0..4 {
+                    if notify(conn, &buf[..len]).is_ok() {
+                        break;
+                    }
+
+                    Timer::after_nanos(200).await;
                 }
-            },
+
+                match notify(conn, &buf[..len]) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!("Error sending notification: {:?}", e);
+                    }
+                }
+            }
             Err(e) => {
                 warn!("Error encoding DFU response: {:?}", e);
             }
@@ -110,7 +121,10 @@ impl NrfDfuService {
                             )?;
                         }
                         // if conn.notify_packet {
-                        //     self.packet_notify(&conn.connection, &Vec::from_slice(response).unwrap())?;
+                        //     self.packet_notify(
+                        //         &conn.connection,
+                        //         &Vec::from_slice(response).unwrap(),
+                        //     )?;
                         // }
                         Ok(())
                     })

@@ -15,12 +15,10 @@ fn patch_pos(x: u8, y: u8) -> (u8, u8) {
         } else {
             (x + 5, y)
         }
+    } else if x == 6 {
+        THUMB_CLUSTER_PATCH_L[y as usize]
     } else {
-        if x == 6 {
-            THUMB_CLUSTER_PATCH_L[y as usize]
-        } else {
-            (x, y)
-        }
+        (x, y)
     }
 }
 

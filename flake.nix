@@ -16,6 +16,7 @@
     parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
     keylayout.url = "github:simmsb/keylayout";
+    ble-dfu.url = "github:simmsb/rust-ble-dfu";
     elf2uf2.url = "github:simmsb/elf2uf2-rs";
 
     uf2.url = "github:microsoft/uf2";
@@ -60,7 +61,7 @@
           '';
           arm-toolchain-plain = fenix.packages.${system}.fromToolchainFile {
             file = ./rust-toolchain.toml;
-            sha256 = "sha256-UH3aTxjEdeXYn/uojGVTHrJzZRCc3ODd05EDFvHmtKE=";
+            sha256 = "sha256-9GnMWM2pjzawUuVU7EbnPMn79rMknaA4EaxipyTgqig=";
           };
           native-toolchain = (fenix.packages.${system}.complete.withComponents [
             "cargo"
@@ -134,12 +135,13 @@
             inherit system;
             overlays = [
               inputs.keylayout.overlays.default
+              inputs.ble-dfu.overlays.default
               inputs.elf2uf2.overlays.default
             ];
           };
 
           devShells.default = craneLib.devShell {
-            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs keymap-drawer ];
+            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs keymap-drawer dfu_ble ];
           };
         };
     };

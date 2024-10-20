@@ -56,7 +56,7 @@ pub async fn set<T: core::any::Any + serde::Serialize>(value: &T) -> Option<()> 
         core::mem::transmute::<_, [u8; core::mem::size_of::<TypeId>()]>(TypeId::of::<T>())
     };
 
-    tx.write(&key, &buf).await.ok()?;
+    tx.write(&key, buf).await.ok()?;
     tx.commit().await.ok()?;
 
     Some(())

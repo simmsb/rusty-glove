@@ -2,8 +2,6 @@ use bytemuck::{Pod, Zeroable};
 use cichlid::ColorRGB;
 use embassy_nrf::{
     gpio::{OutputDrive, Pin as GpioPin},
-    i2s::{self, MasterClock, MultiBuffering, OutputStream},
-    interrupt::typelevel::Binding,
     pwm::{
         Config, Instance, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
         SingleSequencer,
@@ -12,7 +10,6 @@ use embassy_nrf::{
 };
 use embassy_time::Timer;
 
-use super::layout::NUM_LEDS;
 
 // const NUM_INITIAL_RESETS: usize = 10;
 // const NUM_RESETS: usize = 10;

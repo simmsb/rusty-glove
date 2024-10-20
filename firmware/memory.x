@@ -11,7 +11,7 @@ MEMORY
   DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 320K
   BOOTLOADER                        : ORIGIN = ORIGIN(DFU) + LENGTH(DFU), LENGTH = 24K
   BOOTLOADER_STATE                  : ORIGIN = ORIGIN(BOOTLOADER) + LENGTH(BOOTLOADER), LENGTH = 4K
-  RAM                         (rwx) : ORIGIN = 0x20000000 + 0x10190, LENGTH = 256K - 0x10190
+  RAM                         (rwx) : ORIGIN = 0x20000000 + 0x10318, LENGTH = 256K - 0x10318
   uicr_bootloader_start_address (r) : ORIGIN = 0x10001014, LENGTH = 0x4
 }
 

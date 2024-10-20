@@ -2,7 +2,7 @@ use core::array;
 
 use cichlid::ColorRGB;
 use embassy_futures::select::{select, select3};
-use embassy_nrf::peripherals::{I2S, PWM0};
+use embassy_nrf::peripherals::PWM0;
 use embassy_time::{Duration, Instant, Timer};
 use fixed::types::{U16F16, U32F32};
 use fixed_macro::fixed;

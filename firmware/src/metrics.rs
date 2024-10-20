@@ -43,6 +43,7 @@ fn push_update(m: Metrics) {
     p.publish_immediate(m);
 }
 
+#[allow(unused)]
 pub async fn request_sync() {
     push_update(CURRENT_METRICS.lock().await.clone());
 }

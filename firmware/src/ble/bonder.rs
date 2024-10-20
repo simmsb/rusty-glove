@@ -1,3 +1,5 @@
+/// Currently unused
+
 use maitake_sync::blocking;
 use nrf_softdevice::ble::{self, gatt_server::get_sys_attrs, security::SecurityHandler};
 use once_cell::sync::OnceCell;
@@ -39,7 +41,7 @@ struct EncryptionInfo {
 
 mkfrom!(ble::EncryptionInfo => EncryptionInfo: [ ltk, flags ]);
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Copy, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 struct MasterId {
     ediv: u16,
@@ -74,14 +76,14 @@ struct IdentityResolutionKey {
 impl From<ble::IdentityResolutionKey> for IdentityResolutionKey {
     fn from(value: ble::IdentityResolutionKey) -> Self {
         Self {
-            irk: value.as_raw().irk.clone(),
+            irk: value.as_raw().irk,
         }
     }
 }
 
-impl Into<ble::IdentityResolutionKey> for IdentityResolutionKey {
-    fn into(self) -> ble::IdentityResolutionKey {
-        ble::IdentityResolutionKey::from_raw(nrf_softdevice_s140::ble_gap_irk_t { irk: self.irk })
+impl From<IdentityResolutionKey> for ble::IdentityResolutionKey {
+    fn from(val: IdentityResolutionKey) -> Self {
+        ble::IdentityResolutionKey::from_raw(nrf_softdevice_s140::ble_gap_irk_t { irk: val.irk })
     }
 }
 
@@ -107,12 +109,23 @@ struct BondInfo {
 }
 
 pub async fn load_bonder() -> &'static Bonder {
+    if let Some(x) = BONDER.get() {
+        return x;
+    }
+
     let bondinfo = BondInfo {
         encryption: crate::flash::get::<EncryptionInfo>().await,
         master_id: crate::flash::get::<MasterId>().await,
         identity_key: crate::flash::get::<IdentityKey>().await,
         sys_attrs: crate::flash::get::<SysAttrs>().await,
     };
+
+    // let bondinfo = BondInfo {
+    //     encryption: None,
+    //     master_id: None,
+    //     identity_key: None,
+    //     sys_attrs: None,
+    // };
 
     let bonder = Bonder {
         data: blocking::Mutex::new(bondinfo),
@@ -121,13 +134,15 @@ pub async fn load_bonder() -> &'static Bonder {
     BONDER.get_or_init(move || bonder)
 }
 
-static BONDER: OnceCell<Bonder> = OnceCell::new();
+pub static BONDER: OnceCell<Bonder> = OnceCell::new();
 static BONDER_UPDATE: WaitCell = WaitCell::new();
 
 #[embassy_executor::task]
 pub async fn save_bondinfo_loop(bonder: &'static Bonder) {
     loop {
         _ = BONDER_UPDATE.wait().await;
+
+        crate::log::debug!("Saving bond information");
 
         let data = bonder.data.with_lock(|x| x.clone());
 
@@ -190,6 +205,8 @@ impl SecurityHandler for Bonder {
             .with_lock(|x| Some((x.master_id.clone()?, x.encryption.clone()?)))?;
 
         if Into::<ble::MasterId>::into(saved_master_id) != master_id {
+            crate::log::debug!("Found no bond info for {} (saved: {})", master_id, saved_master_id);
+
             return None;
         }
 
@@ -215,13 +232,15 @@ impl SecurityHandler for Bonder {
     }
 
     fn load_sys_attrs(&self, conn: &nrf_softdevice::ble::Connection) {
-        crate::log::debug!("Getting sys attrs for {}", conn.peer_address());
-
         let attrs = self.data.with_lock(|x| x.sys_attrs.clone());
 
-        if let Err(_err) = nrf_softdevice::ble::gatt_server::set_sys_attrs(
+        crate::log::debug!("Getting sys attrs for {}: {}", conn.peer_address(), attrs);
+
+        if let Err(err) = nrf_softdevice::ble::gatt_server::set_sys_attrs(
             conn,
             attrs.as_ref().map(|a| a.data.as_slice()),
-        ) {}
+        ) {
+            crate::log::trace!("Error setting sys attrs: {}", err);
+        }
     }
 }

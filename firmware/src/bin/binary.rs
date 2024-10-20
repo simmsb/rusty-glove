@@ -22,6 +22,6 @@ fn main() -> ! {
     // let executor = static_cell::make_static!(embassy_executor::Executor::new());
 
     executor.run(|spawner| {
-        spawner.must_spawn(asyncmain(spawner.clone()));
+        spawner.must_spawn(asyncmain(spawner));
     });
 }

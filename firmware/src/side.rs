@@ -11,7 +11,7 @@ pub fn get_side() -> KeyboardSide {
     }
     #[cfg(feature = "side_right")]
     {
-        return KeyboardSide::Right;
+        KeyboardSide::Right
     }
     #[cfg(any(
         not(any(feature = "side_left", feature = "side_right")),
