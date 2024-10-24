@@ -11,6 +11,7 @@ use embassy_nrf::nvmc::Nvmc;
 use embassy_nrf::wdt;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
+use embedded_storage::nor_flash::NorFlash as _;
 #[cfg(feature = "panic-probe")]
 use panic_probe as _;
 
@@ -20,9 +21,9 @@ fn main() -> ! {
 
     // Uncomment this if you are debugging the bootloader with debugger/RTT attached,
     // as it prevents a hard fault when accessing flash 'too early' after boot.
-    for _i in 0..10000000 {
-        cortex_m::asm::nop();
-    }
+    cortex_m::asm::delay(10000000);
+
+    defmt::info!("Bootloader starting");
 
     let mut wdt_config = wdt::Config::default();
     wdt_config.timeout_ticks = 32768 * 20; // timeout seconds
@@ -32,13 +33,21 @@ fn main() -> ! {
     let internal_flash = WatchdogFlash::start(Nvmc::new(p.NVMC), p.WDT, wdt_config);
     let internal_flash = Mutex::new(RefCell::new(internal_flash));
 
-    let active_offset;
-    let bl: BootLoader = {
-        let config = create_flash_config(&internal_flash);
-        active_offset = config.active.offset();
+    let mut aligned = AlignedBuffer([0u8; Nvmc::WRITE_SIZE]);
+    let config = FirmwareUpdaterConfig::from_linkerfile_blocking(&internal_flash, &internal_flash);
+    let mut state = BlockingFirmwareState::from_config(config, aligned.as_mut());
 
-        BootLoader::prepare(config)
-    };
+    defmt::info!("Current state: {}", state.get_state());
+
+    let config = BootLoaderConfig::from_linkerfile_blocking(
+        &internal_flash,
+        &internal_flash,
+        &internal_flash,
+    );
+    let active_offset = config.active.offset();
+    let bl = BootLoader::<{ embassy_nrf::nvmc::PAGE_SIZE }>::prepare(config);
+
+    defmt::info!("Booting to: {}", active_offset);
 
     unsafe { bl.load(active_offset) }
 }

@@ -41,7 +41,7 @@ use utils::log;
 
 use crate::keys::ScannerInstance;
 
-mod ble;
+pub mod ble;
 mod flash;
 pub mod interboard;
 pub mod keys;
@@ -211,15 +211,13 @@ pub async fn main(spawner: Spawner) {
     );
 
     let dfuconfig = DfuConfig::new(flash_mutex);
+    let host_server = ble::make_ble_server(sd);
 
     if side::is_master() {
         interboard::init_central(&spawner, sd);
-    } else {
-        let interboard_server = interboard::make_server(sd);
-        let host_server = ble::make_nonhid_server(sd);
-        interboard::init_peripheral(&spawner, sd, interboard_server);
-        ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
-    };
+    }
+
+    ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
 
     spawner.must_spawn(softdevice_task(sd));
     spawner.must_spawn(watchdog_task());
@@ -282,9 +280,15 @@ pub async fn main(spawner: Spawner) {
     {
         let mut magic = embassy_boot::AlignedBuffer([0; 4]);
         let mut state = embassy_boot_nrf::FirmwareState::new(dfuconfig.state(), &mut magic.0);
+
+        crate::log::debug!(
+            "Current firmware state: {}",
+            defmt::Debug2Format(&state.get_state().await)
+        );
+
         if let Err(e) = state.mark_booted().await {
             crate::log::error!(
-                "afailed to mark successful booting (wed'll roll back on reboot): {}",
+                "Failed to mark successful booting (wed'll roll back on reboot): {}",
                 defmt::Debug2Format(&e)
             )
         }

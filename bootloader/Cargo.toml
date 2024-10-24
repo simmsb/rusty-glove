@@ -27,5 +27,6 @@ static_cell = "1.1"
 
 [features]
 turbowakers = ["embassy-sync/turbowakers"]
+logging = ["embassy-boot/defmt", "embassy-boot-nrf/defmt"]
 
-default = ["turbowakers"]
+default = ["turbowakers", "logging"]

@@ -78,6 +78,7 @@ pub struct DeviceInformation {
     pub sw_rev: Option<&'static str>,
 }
 
+#[derive(Clone)]
 pub struct DeviceInformationService {}
 
 impl DeviceInformationService {

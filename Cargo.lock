@@ -504,6 +504,7 @@ name = "embassy-boot"
 version = "0.3.0"
 source = "git+https://github.com/embassy-rs/embassy#0225c2a0f2ac7fbca5fe1c4d048a09c70738bcb3"
 dependencies = [
+ "defmt",
  "digest",
  "embassy-embedded-hal",
  "embassy-sync",
@@ -520,6 +521,7 @@ dependencies = [
  "cfg-if",
  "cortex-m",
  "cortex-m-rt",
+ "defmt",
  "embassy-boot",
  "embassy-nrf",
  "embassy-sync",

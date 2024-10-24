@@ -2,7 +2,8 @@ use embassy_os_guess::OS;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
 use usbd_human_interface_device::{device::keyboard::NKROBootKeyboardReport, page::Keyboard};
 
-use crate::usb::{guessed_host_os, hid::publish_keyboard_report};
+use crate::ble::hid::publish_keyboard_report;
+use crate::usb::guessed_host_os;
 
 use super::UnicodeMode;
 

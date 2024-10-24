@@ -13,7 +13,7 @@ use crate::{
     interboard::{self},
     messages::device_to_device::DeviceToDevice,
     side,
-    usb::hid::publish_keyboard_report,
+    ble::hid::publish_keyboard_report,
     utils::Ticker,
 };
 

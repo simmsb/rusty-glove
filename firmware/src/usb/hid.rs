@@ -14,10 +14,10 @@ type CS = embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 
 static KEYBOARD_REPORTS: Channel<CS, NKROBootKeyboardReport, 2> = Channel::new();
 
-pub async fn publish_keyboard_report(report: NKROBootKeyboardReport) {
-    crate::log::debug!("kb: {}", defmt::Debug2Format(&report));
-    KEYBOARD_REPORTS.send(report).await;
-}
+// pub async fn publish_keyboard_report(report: NKROBootKeyboardReport) {
+//     crate::log::debug!("kb: {}", defmt::Debug2Format(&report));
+//     KEYBOARD_REPORTS.send(report).await;
+// }
 
 #[embassy_executor::task]
 async fn keyboard_writer(mut keyboard_writer: HidWriter<'static, USBDriver, 64>) {

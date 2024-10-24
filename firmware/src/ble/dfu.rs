@@ -18,6 +18,7 @@ pub const ATT_MTU: usize = MTU + 3;
 pub type Target = DfuTarget<MTU>;
 
 #[nrf_softdevice::gatt_service(uuid = "FE59")]
+#[derive(Clone)]
 pub struct NrfDfuService {
     #[characteristic(
         uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50",
@@ -66,7 +67,7 @@ impl NrfDfuService {
                         break;
                     }
 
-                    Timer::after_nanos(200).await;
+                    Timer::after_micros(100).await;
                 }
 
                 match notify(conn, &buf[..len]) {

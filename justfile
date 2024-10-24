@@ -1,6 +1,10 @@
 default:
   @just -l
 
+build:
+  env DEFMT_LOG="" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic
+  env DEFMT_LOG="" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic
+
 left:
   env DEFMT_LOG="" cargo strip -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- --strip-all -o target/left.elf
 
