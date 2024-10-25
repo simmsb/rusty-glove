@@ -9,11 +9,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1729452327,
-        "narHash": "sha256-RIg6SCvzgMEkUDpFPw0Con/Bx++0UDn09J+b2LnSJ8Y=",
+        "lastModified": 1729874023,
+        "narHash": "sha256-eDqOI7tjBfQojOO4e+bfvzqlSs+JYqoeRCjrm+CfGI4=",
         "owner": "simmsb",
         "repo": "rust-ble-dfu",
-        "rev": "b0f2821f7dc0f319d6d94f0a5e55ebc024b73ca7",
+        "rev": "d96178cb99cd4ac4edd5d5e0a2eab04fb1248303",
         "type": "github"
       },
       "original": {

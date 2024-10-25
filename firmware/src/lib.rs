@@ -167,7 +167,7 @@ pub async fn main(spawner: Spawner) {
             attr_tab_size: 32768,
         }),
         conn_gap: Some(nrf_softdevice::raw::ble_gap_conn_cfg_t {
-            conn_count: 6,
+            conn_count: 3,
             event_length: 24,
         }),
         conn_gatt: Some(nrf_softdevice::raw::ble_gatt_conn_cfg_t { att_mtu: 256 }),
@@ -201,6 +201,8 @@ pub async fn main(spawner: Spawner) {
         },
     );
 
+    log::trace!("Configured softdevice");
+
     // unsafe {
     //     reboot_to_bootloader();
     //     check_bootloader();
@@ -214,9 +216,11 @@ pub async fn main(spawner: Spawner) {
     let host_server = ble::make_ble_server(sd);
 
     if side::is_master() {
+        log::trace!("starting central");
         interboard::init_central(&spawner, sd);
     }
 
+    log::trace!("Setting up ble");
     ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
 
     spawner.must_spawn(softdevice_task(sd));

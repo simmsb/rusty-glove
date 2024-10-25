@@ -46,4 +46,7 @@ draw:
   keymap draw layouts/rusty-glove.yaml > layouts/rusty-glove.svg
 
 debug_left:
-  env DEFMT_LOG="trace" cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic
+  env DEFMT_LOG="trace" cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_left,default_unselected_side
+
+debug_right:
+  env DEFMT_LOG="trace" cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_right,default_unselected_side

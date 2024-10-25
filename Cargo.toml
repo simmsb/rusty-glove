@@ -35,7 +35,7 @@ debug = 2
 debug-assertions = false # <-
 incremental = false
 lto = 'fat'
-opt-level = 3            # <-
+opt-level = 'z'            # <-
 overflow-checks = false  # <-
 panic = 'abort'
 

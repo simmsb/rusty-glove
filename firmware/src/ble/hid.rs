@@ -22,9 +22,7 @@ pub struct HidService {
         read,
         write,
         notify,
-        value = "[0u8, 1u8]",
-        descriptor(uuid = "2908", security = "justworks", value = "[0, 1]"),
-        descriptor(uuid = "2902", security = "justworks", value = "[0, 1]")
+        descriptor(uuid = "2908", security = "justworks", value = "[0, 1]")
     )]
     pub input_report: <NKROBootKeyboardReport as PackedStruct>::ByteArray,
 

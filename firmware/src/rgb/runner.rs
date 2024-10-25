@@ -8,7 +8,7 @@ use fixed::types::{U16F16, U32F32};
 use fixed_macro::fixed;
 
 use crate::{
-    interboard, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker,
+    interboard, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker
 };
 
 use super::{
@@ -123,8 +123,9 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
     let mut last_sync = Instant::now();
     const SYNC_PERIOD: Duration = Duration::from_secs(10);
 
+    let mut errors = [GammaErrorTracker::default(); NUM_LEDS as usize];
+
     loop {
-        let mut errors = [GammaErrorTracker::default(); NUM_LEDS as usize];
 
         if let Some((_, next)) = next.take_if(|(f, _)| f.elapsed() > FADE_DURATION) {
             crate::log::info!("Setting animation to: {}", next.animation.name());

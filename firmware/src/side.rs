@@ -1,10 +1,14 @@
 use shared::side::KeyboardSide;
 
-pub fn is_this_side(side: KeyboardSide) -> bool {
-    get_side() == side
+pub const fn is_this_side(side: KeyboardSide) -> bool {
+    // no const eq?
+    match get_side() {
+        KeyboardSide::Left => matches!(side, KeyboardSide::Left),
+        KeyboardSide::Right => matches!(side, KeyboardSide::Right),
+    }
 }
 
-pub fn get_side() -> KeyboardSide {
+pub const fn get_side() -> KeyboardSide {
     #[cfg(feature = "side_left")]
     {
         return KeyboardSide::Left;
@@ -20,10 +24,10 @@ pub fn get_side() -> KeyboardSide {
     compile_error!("Select feature side_left or side_right")
 }
 
-pub fn get_other_side() -> KeyboardSide {
+pub const fn get_other_side() -> KeyboardSide {
     get_side().other()
 }
 
-pub fn is_master() -> bool {
+pub const fn is_master() -> bool {
     is_this_side(KeyboardSide::Right)
 }

@@ -11,13 +11,15 @@ pub enum KeyboardSide {
 }
 
 impl KeyboardSide {
-    pub fn is_left(self) -> bool {
-        self == Self::Left
+    pub const fn is_left(self) -> bool {
+        matches!(self, Self::Left)
     }
-    pub fn is_right(self) -> bool {
-        self == Self::Right
+
+    pub const fn is_right(self) -> bool {
+        matches!(self, Self::Right)
     }
-    pub fn other(self) -> Self {
+
+    pub const fn other(self) -> Self {
         match self {
             KeyboardSide::Left => KeyboardSide::Right,
             KeyboardSide::Right => KeyboardSide::Left,

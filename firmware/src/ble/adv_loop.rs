@@ -25,27 +25,33 @@ pub async fn advertisement_loop(
     #[allow(unused)] bonder: &'static Bonder,
     dfuconfig: DfuConfig,
 ) {
+    static SERVICES: &[ServiceUuid16] = if crate::side::is_master() {
+        &[
+            ServiceUuid16::DEVICE_INFORMATION,
+            ServiceUuid16::HUMAN_INTERFACE_DEVICE,
+        ]
+    } else {
+        &[ServiceUuid16::DEVICE_INFORMATION]
+    };
+
     static ADV_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
         .flags(&[Flag::GeneralDiscovery, Flag::LE_Only])
         .services_16(
             nrf_softdevice::ble::advertisement_builder::ServiceList::Incomplete,
-            &[
-                ServiceUuid16::DEVICE_INFORMATION, // TODO: battery
-                ServiceUuid16::from_u16(0xFE59),
-            ],
+            SERVICES,
         )
         .raw(AdvertisementDataType::APPEARANCE, &[0xC1, 0x03])
-        .full_name("Glove80 LH")
+        .full_name(if crate::side::is_master() {
+            "Glove80 RH"
+        } else {
+            "Glove80 LH"
+        })
         .build();
 
     static SCAN_DATA: LegacyAdvertisementPayload = LegacyAdvertisementBuilder::new()
         .services_16(
             nrf_softdevice::ble::advertisement_builder::ServiceList::Incomplete,
-            &[
-                // TODO: battery
-                ServiceUuid16::DEVICE_INFORMATION,
-                ServiceUuid16::from_u16(0xFE59),
-            ],
+            SERVICES,
         )
         .build();
 
@@ -75,13 +81,6 @@ pub async fn advertisement_loop(
             conn.peer_address(),
             conn.security_mode()
         );
-
-        // unsure if this is needed?
-        // if let Err(e) = conn.request_security() {
-        //     crate::log::info!("Failed to auth connection: {}", e);
-        //     _ = conn.disconnect_with_reason(HciStatus::AUTHENTICATION_FAILURE);
-        //     continue;
-        // }
 
         let _ = spawner.spawn(handle_connection(
             conn,
@@ -127,6 +126,10 @@ async fn handle_connection(
 
     let msg_chan = Channel::<ThreadModeRawMutex, NrfDfuServiceEvent, 16>::new();
 
+    // set when the connection quits, used to ask the dfu processor to quit as
+    // it might have some more work to do.
+    let quitting = crate::sync::WaitCell::new();
+
     let hid_processor = async {
         if let Some(hid) = server.hid.as_ref() {
             hid.send_reports(&conn).await;
@@ -149,7 +152,15 @@ async fn handle_connection(
 
     let dfu_command_processor = async {
         loop {
-            let evt = msg_chan.receive().await;
+            let evt =
+                match embassy_futures::select::select(msg_chan.receive(), quitting.wait()).await {
+                    embassy_futures::select::Either::First(evt) => evt,
+                    embassy_futures::select::Either::Second(_msg) => {
+                        crate::log::debug!("DFU processor told to quit");
+
+                        return;
+                    }
+                };
 
             crate::log::debug!("Handling DFU command");
 
@@ -173,7 +184,7 @@ async fn handle_connection(
                         cortex_m::peripheral::SCB::sys_reset();
                     }
                     Err(e) => {
-                        panic!("Error while updating: {:?}", e);
+                        defmt::panic!("Error while updating: {:?}", defmt::Debug2Format(&e));
                     }
                 }
             }
@@ -204,19 +215,11 @@ async fn handle_connection(
         }
     });
 
-    match embassy_futures::select::select4(
-        hid_processor,
-        split_processor,
-        dfu_command_processor,
-        gatt,
-    )
-    .await
-    {
-        embassy_futures::select::Either4::First(_) => crate::log::debug!("Hid quit"),
-        embassy_futures::select::Either4::Second(_) => crate::log::debug!("Split quit"),
-        embassy_futures::select::Either4::Third(_) => crate::log::debug!("dfu quit"),
-        embassy_futures::select::Either4::Fourth(_) => crate::log::debug!("gatt server quit"),
-    }
+    embassy_futures::join::join(dfu_command_processor, async {
+        embassy_futures::select::select3(hid_processor, split_processor, gatt).await;
+        quitting.wake();
+    })
+    .await;
 
     crate::log::debug!("Device disconnected");
 }
