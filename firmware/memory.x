@@ -6,9 +6,9 @@ MEMORY
   MBR                               : ORIGIN = 0x00000000, LENGTH = 4K
   SOFTDEVICE                        : ORIGIN = 0x00001000, LENGTH = 152K
   /* NRF52840 with Softdevice S140 7.3.0 */
-  FLASH                             : ORIGIN = ORIGIN(SOFTDEVICE) + LENGTH(SOFTDEVICE), LENGTH = 400K
+  FLASH                             : ORIGIN = ORIGIN(SOFTDEVICE) + LENGTH(SOFTDEVICE), LENGTH = 316K
   CONFIG                            : ORIGIN = ORIGIN(FLASH) + LENGTH(FLASH), LENGTH = 8K
-  DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 404K
+  DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 320K
   BOOTLOADER                        : ORIGIN = ORIGIN(DFU) + LENGTH(DFU), LENGTH = 24K
   BOOTLOADER_STATE                  : ORIGIN = ORIGIN(BOOTLOADER) + LENGTH(BOOTLOADER), LENGTH = 4K
   RAM                         (rwx) : ORIGIN = 0x20000000 + 0x10318, LENGTH = 256K - 0x10318

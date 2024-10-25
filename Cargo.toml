@@ -25,7 +25,7 @@ debug = 2
 debug-assertions = true # <-
 incremental = false
 lto = 'fat'
-opt-level = 's'         # <-
+opt-level = 'z'         # <-
 overflow-checks = true  # <-
 
 [profile.release]

@@ -11,6 +11,8 @@ use embassy_nrf::nvmc::Nvmc;
 use embassy_nrf::wdt;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
+// needed for the _turbo_wake symbol
+use embassy_executor as _;
 use embedded_storage::nor_flash::NorFlash as _;
 #[cfg(feature = "panic-probe")]
 use panic_probe as _;

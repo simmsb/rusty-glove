@@ -16,6 +16,13 @@ embassy-embedded-hal = { version = "0.2.0" }
 embassy-futures = { version = "0.1.1" }
 embassy-nrf = { version = "0.2.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
 embassy-sync = { version = "0.6.0", features = [] }
+embassy-executor = { version = "0.6.0", features = [
+  "nightly",
+  "arch-cortex-m",
+  "executor-thread",
+  "integrated-timers",
+  "nightly",
+] }
 embedded-hal = "1.0"
 embedded-io = "0.6"
 embedded-storage = "0.3.1"
@@ -26,7 +33,7 @@ panic-probe = { version = "0.3", features = ["print-defmt"], optional = true }
 static_cell = "1.1"
 
 [features]
-turbowakers = ["embassy-sync/turbowakers"]
+turbowakers = ["embassy-sync/turbowakers", "embassy-executor/turbowakers"]
 logging = ["embassy-boot/defmt", "embassy-boot-nrf/defmt"]
 
 default = ["turbowakers", "logging"]

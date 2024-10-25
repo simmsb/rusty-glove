@@ -142,6 +142,7 @@ dependencies = [
  "embassy-boot",
  "embassy-boot-nrf",
  "embassy-embedded-hal",
+ "embassy-executor",
  "embassy-futures",
  "embassy-nrf",
  "embassy-sync",
