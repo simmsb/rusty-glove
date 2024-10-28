@@ -7,7 +7,7 @@ MEMORY
   /* NRF52840 with Softdevice S140 7.3.0 */
 
   ACTIVE                            : ORIGIN = ORIGIN(SOFTDEVICE) + LENGTH(SOFTDEVICE), LENGTH = 316K
-  CONFIG                            : ORIGIN = ORIGIN(ACTIVE) + LENGTH(ACTIVE), LENGTH = 8K
+  CONFIG                            : ORIGIN = ORIGIN(ACTIVE) + LENGTH(ACTIVE), LENGTH = 48K
   DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 320K
   /* FLASH is where the bootloader is placed */
   FLASH                             : ORIGIN = ORIGIN(DFU) + LENGTH(DFU), LENGTH = 24K

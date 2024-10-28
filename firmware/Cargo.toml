@@ -139,7 +139,7 @@ probe = [
   "nrf-softdevice/defmt",
   "heapless/defmt-03",
   "embassy-os-guess/defmt",
-
+  "ekv/defmt"
 ]
 turbowakers = ["embassy-sync/turbowakers", "embassy-executor/turbowakers"]
 

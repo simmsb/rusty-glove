@@ -14,7 +14,7 @@ use nrf_softdevice::{
             ServiceUuid16,
         },
         gatt_server,
-        peripheral::{self, advertise_connectable, ConnectableAdvertisement},
+        peripheral::{self, ConnectableAdvertisement},
     },
     Softdevice,
 };
@@ -22,7 +22,7 @@ use nrf_softdevice::{
 pub async fn advertisement_loop(
     sd: &'static Softdevice,
     server: GloveServer,
-    #[allow(unused)] bonder: &'static Bonder,
+    bonder: &'static Bonder,
     dfuconfig: DfuConfig,
 ) {
     static SERVICES: &[ServiceUuid16] = if crate::side::is_master() {
@@ -70,9 +70,10 @@ pub async fn advertisement_loop(
             scan_data: &SCAN_DATA,
         };
 
-        let conn =
-            // with_advertising(advertise_pairable(sd, adv, &config, temp_bonder)),
-            with_advertising(advertise_connectable(sd, adv, &config)).await.unwrap();
+        let conn = with_advertising(peripheral::advertise_pairable(sd, adv, &config, bonder))
+            .await
+            .unwrap();
+        // with_advertising(advertise_connectable(sd, adv, &config)).await.unwrap();
 
         // bonder.load_sys_attrs(&conn);
 

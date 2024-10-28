@@ -496,6 +496,7 @@ name = "ekv"
 version = "0.1.0"
 source = "git+https://github.com/embassy-rs/ekv#fa338d275c22c35347331bf839510c03f90525b5"
 dependencies = [
+ "defmt",
  "embassy-sync",
  "heapless",
 ]
