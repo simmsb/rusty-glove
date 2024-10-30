@@ -4,7 +4,7 @@ use embassy_nrf::gpio::{Input, Output};
 use embassy_sync::{
     blocking_mutex::raw::ThreadModeRawMutex, channel::Channel, pubsub::PubSubChannel,
 };
-use embassy_time::Duration;
+use embassy_time::{Duration, Timer};
 use keyberon::{key_code::KeyCode, layout::Event};
 use packed_struct::PrimitiveEnum;
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
@@ -36,14 +36,12 @@ pub mod scan;
 mod unicode;
 
 /// Raw matrix presses and releases
-pub static MATRIX_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 1> =
-    PubSubChannel::new();
+pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> =
+    Channel::new();
 
 /// Chord-processed events
 pub static KEY_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 2> =
     PubSubChannel::new();
-
-static KEYS_TO_OTHER_SIDE: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> = Channel::new();
 
 pub type ScannerInstance<'a> = scan::Scanner<
     (
@@ -69,34 +67,34 @@ pub type ScannerInstance<'a> = scan::Scanner<
 async fn matrix_scanner(mut scanner: ScannerInstance<'static>) {
     // TODO: pause when no activity
 
-    let mut ticker = Ticker::every(Duration::from_hz(1000));
-    let matrix_events = MATRIX_EVENTS.publisher().unwrap();
+    let matrix_events = MATRIX_EVENTS.sender();
 
     loop {
         for evt in scanner.scan() {
-            matrix_events.publish(evt).await;
+            matrix_events.send(evt).await;
         }
 
-        ticker.next().await;
+        // use a timer instead of a ticker here, prevents getting stuck if matrix_events freezes
+        Timer::after(Duration::from_hz(2000)).await;
     }
 }
 
 #[embassy_executor::task]
 async fn matrix_processor() {
-    let mut sub = MATRIX_EVENTS.subscriber().unwrap();
+    let sub = MATRIX_EVENTS.receiver();
     let key_events = KEY_EVENTS.publisher().unwrap();
     let mut chorder = ChordingEngine::new(layout::chorder());
     let mut ticker = Ticker::every(Duration::from_hz(1000));
 
     loop {
-        match select(ticker.next(), sub.next_message_pure()).await {
+        match select(ticker.next(), sub.receive()).await {
             embassy_futures::select::Either::Second(evt) => {
                 //key_events.publish(evt).await;
                 let evts = chorder.process(evt);
                 for evt in evts {
                     embassy_futures::join::join(
                         key_events.publish(evt),
-                        KEYS_TO_OTHER_SIDE.send(evt),
+                        send_to_other_side(evt),
                     )
                     .await;
                 }
@@ -107,7 +105,7 @@ async fn matrix_processor() {
                     let evt = keyberon::layout::Event::Press(x, y);
                     embassy_futures::join::join(
                         key_events.publish(evt),
-                        KEYS_TO_OTHER_SIDE.send(evt),
+                        send_to_other_side(evt),
                     )
                     .await;
                 }
@@ -116,16 +114,12 @@ async fn matrix_processor() {
     }
 }
 
-#[embassy_executor::task]
-async fn send_events_to_other_side() {
-    loop {
-        let evt = KEYS_TO_OTHER_SIDE.receive().await;
-        let evt = match evt {
-            Event::Press(x, y) => DeviceToDevice::KeyPress(x, y),
-            Event::Release(x, y) => DeviceToDevice::KeyRelease(x, y),
-        };
-        interboard::send_msg(evt, 1).await;
-    }
+async fn send_to_other_side(evt: Event) {
+    let evt = match evt {
+        Event::Press(x, y) => DeviceToDevice::KeyPress(x, y),
+        Event::Release(x, y) => DeviceToDevice::KeyRelease(x, y),
+    };
+    interboard::send_msg(evt, 1).await;
 }
 
 #[embassy_executor::task]
@@ -196,7 +190,6 @@ async fn key_event_processor() {
 pub fn init(spawner: &Spawner, scanner: ScannerInstance<'static>) {
     spawner.must_spawn(matrix_processor());
     spawner.must_spawn(matrix_scanner(scanner));
-    spawner.must_spawn(send_events_to_other_side());
     spawner.must_spawn(receive_events_from_other_side());
     if side::is_master() {
         spawner.must_spawn(key_event_processor());

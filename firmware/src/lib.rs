@@ -115,6 +115,8 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
 // Keeps our system alive
 #[embassy_executor::task]
 async fn watchdog_task() {
+    log::debug!("Starting watchdog");
+
     let mut handle = unsafe { embassy_nrf::wdt::WatchdogHandle::steal(0) };
     loop {
         handle.pet();

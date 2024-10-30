@@ -75,7 +75,7 @@ pub trait ScanRows {
     fn scan_rows(&self, debouncers: &mut Self::Debouncers) -> Self::Result;
 }
 
-const DEBOUNCE_PERIOD: u8 = 40; // polling at 1000hz
+const DEBOUNCE_PERIOD: u8 = 40;
 
 impl<C0, C1, C2, C3, C4, C5> ScanRows for (C0, C1, C2, C3, C4, C5)
 where

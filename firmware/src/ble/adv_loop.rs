@@ -6,6 +6,7 @@ use crate::{
 };
 use embassy_boot::AlignedBuffer;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
+use embassy_time::{Duration, Timer};
 use nrf_dfu_target::prelude::{DfuStatus, FirmwareInfo, FirmwareType, HardwareInfo};
 use nrf_softdevice::{
     ble::{
@@ -214,10 +215,22 @@ async fn handle_connection(
                 });
             }
         }
+        crate::ble::server::GloveServerEvent::Uptime(_) => {
+            // there's nothing to do here
+        }
     });
 
+    let update_ts = async {
+        loop {
+            let now = embassy_time::Instant::now();
+            _ = server.uptime.uptime_notify(&conn, &now.as_secs());
+
+            Timer::after_secs(10).await;
+        }
+    };
+
     embassy_futures::join::join(dfu_command_processor, async {
-        embassy_futures::select::select3(hid_processor, split_processor, gatt).await;
+        embassy_futures::select::select4(hid_processor, split_processor, gatt, update_ts).await;
         quitting.wake();
     })
     .await;

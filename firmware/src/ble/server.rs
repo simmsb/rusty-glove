@@ -13,12 +13,20 @@ use nrf_softdevice::{
 
 // TODO battinfo
 
+#[nrf_softdevice::gatt_service(uuid = "c5cef932-96f3-11ef-a546-4374a33721fe")]
+#[derive(Clone)]
+pub struct UptimeService {
+    #[characteristic(uuid = "caafd50c-96f3-11ef-bf9a-6fd22bab853a", read, notify)]
+    pub uptime: u64,
+}
+
 #[derive(Clone)]
 pub struct GloveServer {
     _dis: DeviceInformationService,
     pub dfu: NrfDfuService,
     pub hid: Option<HidService>,
     pub split: Option<SplitService>,
+    pub uptime: UptimeService,
 }
 
 impl GloveServer {
@@ -36,12 +44,14 @@ impl GloveServer {
         let split = crate::side::is_master()
             .not()
             .then(|| SplitService::new(sd).unwrap());
+        let uptime = UptimeService::new(sd).unwrap();
 
         Self {
             _dis: dis,
             dfu,
             hid,
             split,
+            uptime,
         }
     }
 }
@@ -50,6 +60,7 @@ pub enum GloveServerEvent {
     DFU(<NrfDfuService as Service>::Event),
     HID(<HidService as Service>::Event),
     Split(<SplitService as Service>::Event),
+    Uptime(<UptimeService as Service>::Event),
 }
 
 impl Server for GloveServer {
@@ -82,6 +93,10 @@ impl Server for GloveServer {
 
         if let Some(e) = self.split.as_ref().and_then(|x| x.on_write(handle, data)) {
             return Some(GloveServerEvent::Split(e));
+        }
+
+        if let Some(e) = self.uptime.on_write(handle, data) {
+           return Some(GloveServerEvent::Uptime(e))
         }
 
         None
