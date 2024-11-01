@@ -29,7 +29,11 @@ impl SplitService {
         }
     }
 
-    pub async fn transmit_loop(&self, conn: &Connection, mut get_tx: impl async FnMut() -> DeviceToDevice) {
+    pub async fn transmit_loop(
+        &self,
+        conn: &Connection,
+        mut get_tx: impl async FnMut() -> DeviceToDevice,
+    ) {
         loop {
             let msg = get_tx().await;
             let mut buf = [0u8; DeviceToDevice::POSTCARD_MAX_SIZE];

@@ -80,34 +80,34 @@ key opt_enter {
 }
 
 layer base {
-  ws1     ws2       ws3    ws4    ws5                                ws6          ws7            n            n      n;
-  '='     '1'       '2'    '3'    '4'        '5'    '6'              '7'          '8'            '9'          '0'    '\';
-  tab     'q' >esc< 'w'    'e'    'r'        't'    'y'     >bspace< 'u'    >del< 'i'      >'/'< 'o'    >'\'< 'p'    ''';
-  lshift  'a'       's'    'd'    'f'        'g'    'h'     >'<'<    'j'    >':'< 'k'      >'>'< 'l'          ';'    rshift;
-  lctrl   'z'       'x'    'c'    'v'        'b'    'n'     >'"'<    'm'    >'''< ','      >'_'< '.'          '/'    rctrl;
-  n       n         metax  f6     opt_enter                          '('          '['            ']'          ')'    n;
-                           esc    lgui       lalt   ralt             bspace       del;
-                           [sym]  tab        space  space            enter        [num];
+  ws1     ws2       ws3         ws4          ws5                              ws6           ws7               n            n      n;
+  '='     '1'       '2'         '3'          '4'        '5'    '6'            '7'           '8'               '9'          '0'    '\';
+  tab     'q' >esc< 'w'   >esc< 'e'          'r'        't'    'y'   >bspace< 'u'     >del< 'i'         >'/'< 'o'    >'\'< 'p'    ''';
+  lshift  'a'       's'         'd'          'f'        'g'    'h'   >'<'<    'j'     >':'< 'k'         >'>'< 'l'          ';'    rshift;
+  lctrl   'z'       'x'         'c'          'v'        'b'    'n'   >'"'<    'm'     >'''< ','         >'_'< '.'          '/'    rctrl;
+  n       n         metax       f6           opt_enter                        '('           '['               ']'          ')'    n;
+                                lshift       lgui       lalt   ralt           rgui          rshift;
+                                space@[sym]  tab        lctrl  rctrl          enter         space@[num];
 }
 
 layer sym {
-  n       n         n      n      n                                  n            n              n            n      n;
-  f1      f2        f3     f4     f5         f6     f7               f8           f9             f10          n      n;
-  n       '!'       '@'    '{'    '}'        '|'    '`'              '~'          '\'            n            '"'    n;
-  lshift  '#'       '$'    '('    ')'        toad   '+'              '-'          '/'            '*'          '''    rshift;
-  lctrl   '%'       '^'    '['    ']'        n      '&'              '='          ','            '.'          '_'    rctrl;
-  n       n         n      n      n                                  n            n              n            n      n;
-                           esc    lgui       n      n                n            n;
-                           lalt   tab        space  space            enter        ralt;
+  n       n         n           n            n                                n             n                 n            n      n;
+  f1      f2        f3          f4           f5         f6     f7             f8            f9                f10          n      n;
+  n       '!'       '@'         '{'          '}'        '|'    '`'            '~'           '\'               n            '"'    n;
+  lshift  '#'       '$'         '('          ')'        toad   '+'            '-'           '/'               '*'          '''    rshift;
+  lctrl   '%'       '^'         '['          ']'        n      '&'            '='           ','               '.'          '_'    rctrl;
+  n       n         n           n            n                                n             n                 n            n      n;
+                                lshift       lgui       lalt   ralt           rgui          rshift;
+                                '='          tab        space  space          enter         n;
 }
 
 layer num {
-  n       n         n      n      n                                  n            n              n            n      n;
-  n       n         n      n      n          n      n                n            n              n            n      n;
-  n       '1'       '2'    '3'    '4'        '5'    '6'              '7'          '8'            '9'          '0'    n;
-  lshift  f1        f2     f3     f4         f5     volup            left         down           up           right  rshift;
-  lctrl   f6        f7     f8     f9         f10    voldown          pgdown       ctrldown       ctrlup       pgup   rctrl;
-  n       n         n      n      n                                  n            n              n            n      n;
-                           esc    lgui       n      n                n            n;
-                           lalt   tab        space  space            enter        ralt;
+  n       n         n           n            n                                n             n                 n            n      n;
+  n       n         n           n            n          n      volup          voldown       n                 n            n      n;
+  n       '1'       '2'         '3'          '4'        '5'    '6'            '7'           '8'               '9'          '0'    n;
+  lshift  f1        f2          f3           f4         f5     n              left          down              up           right  rshift;
+  lctrl   f6        f7          f8           f9         f10    n              pgdown        ctrldown          ctrlup       pgup   rctrl;
+  n       n         n           n            n                                n             n                 n            n      n;
+                                lshift       lgui       lalt   ralt           rgui          rshift;
+                                n            tab        lctrl  rctrl          enter         '=';
 }

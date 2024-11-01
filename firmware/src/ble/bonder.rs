@@ -125,7 +125,10 @@ pub async fn load_bonder() -> &'static Bonder {
 
     let keys = crate::flash::get::<SavedBonds>().await;
 
-    crate::log::debug!("Loaded bond information with {} entries", keys.as_ref().map(|x| x.0.len()).unwrap_or(0));
+    crate::log::debug!(
+        "Loaded bond information with {} entries",
+        keys.as_ref().map(|x| x.0.len()).unwrap_or(0)
+    );
 
     let mut map = heapless::LinearMap::new();
 
@@ -134,7 +137,10 @@ pub async fn load_bonder() -> &'static Bonder {
             crate::log::debug!("{} = {:#?}", addr, info);
             _ = map.insert(*addr, info);
         } else {
-            crate::log::warn!("Bonder tried to load info for addr: {} but it was missing?", addr);
+            crate::log::warn!(
+                "Bonder tried to load info for addr: {} but it was missing?",
+                addr
+            );
         }
     }
 

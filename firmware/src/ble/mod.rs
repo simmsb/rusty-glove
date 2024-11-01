@@ -4,13 +4,13 @@ use embassy_executor::Spawner;
 use nrf_softdevice::Softdevice;
 use server::GloveServer;
 
+mod adv_loop;
 mod bonder;
 mod device_info;
 pub mod dfu;
-mod server;
-mod adv_loop;
 pub mod hid;
 mod interboard;
+mod server;
 
 pub fn make_ble_server(sd: &mut Softdevice) -> GloveServer {
     GloveServer::new(sd)

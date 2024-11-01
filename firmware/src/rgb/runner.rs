@@ -8,7 +8,7 @@ use fixed::types::{U16F16, U32F32};
 use fixed_macro::fixed;
 
 use crate::{
-    interboard, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker
+    interboard, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker,
 };
 
 use super::{
@@ -20,7 +20,7 @@ use super::{
     RGB_CMD_CHANNEL,
 };
 
-const MAX_LEVEL: u8 = 240;
+const MAX_LEVEL: u8 = 255;
 // I use Kailh sunsets on my glove80, this compensates for that
 const COLOUR_CORRECTION: ColorRGB = ColorRGB::new(190, 200, 255);
 const FADE_DURATION: Duration = Duration::from_secs(3);
@@ -123,9 +123,8 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
     let mut last_sync = Instant::now();
     const SYNC_PERIOD: Duration = Duration::from_secs(10);
 
-    let mut errors = [GammaErrorTracker::default(); NUM_LEDS as usize];
-
     loop {
+        let mut errors = [GammaErrorTracker::default(); NUM_LEDS as usize];
 
         if let Some((_, next)) = next.take_if(|(f, _)| f.elapsed() > FADE_DURATION) {
             crate::log::info!("Setting animation to: {}", next.animation.name());
@@ -154,7 +153,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                 super::Command::SyncAnimation(sync) => {
                     if current.animation.is(&sync) {
                         current.animation.sync(sync);
-                    } else {
+                    } else if next.is_none() {
                         next = Some((
                             Instant::now(),
                             PerformingAnimation::new(

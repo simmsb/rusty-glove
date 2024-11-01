@@ -10,7 +10,6 @@ use embassy_nrf::{
 };
 use embassy_time::Timer;
 
-
 // const NUM_INITIAL_RESETS: usize = 10;
 // const NUM_RESETS: usize = 10;
 // const NUM_SAMPLES: usize = NUM_LEDS as usize * 3 + NUM_RESETS + NUM_INITIAL_RESETS;

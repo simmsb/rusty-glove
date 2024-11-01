@@ -70,18 +70,20 @@ layers:
     - tap: '] '
     - tap: ') '
     - {}
-  - - tap: Escape
+  - - tap: LShift
     - tap: LGui
     - tap: LAlt
     - tap: RAlt
-    - tap: BSpace
-    - tap: Delete
-  - - tap: sym
+    - tap: RGui
+    - tap: RShift
+  - - tap: Space
+      hold: sym
     - tap: Tab
-    - tap: Space
-    - tap: Space
+    - tap: LCtrl
+    - tap: RCtrl
     - tap: Enter
-    - tap: num
+    - tap: Space
+      hold: num
   sym:
   - - {}
     - {}
@@ -151,18 +153,18 @@ layers:
     - {}
     - {}
     - {}
-  - - tap: Escape
+  - - tap: LShift
     - tap: LGui
-    - {}
-    - {}
-    - {}
-    - {}
-  - - tap: LAlt
+    - tap: LAlt
+    - tap: RAlt
+    - tap: RGui
+    - tap: RShift
+  - - tap: '= '
     - tap: Tab
     - tap: Space
     - tap: Space
     - tap: Enter
-    - tap: RAlt
+    - {}
   num:
   - - {}
     - {}
@@ -180,8 +182,8 @@ layers:
     - {}
     - {}
     - {}
-    - {}
-    - {}
+    - tap: VolUp
+    - tap: VolDown
     - {}
     - {}
     - {}
@@ -204,7 +206,7 @@ layers:
     - tap: F3
     - tap: F4
     - tap: F5
-    - tap: VolUp
+    - {}
     - tap: Left
     - tap: Down
     - tap: Up
@@ -216,7 +218,7 @@ layers:
     - tap: F8
     - tap: F9
     - tap: F10
-    - tap: VolDown
+    - {}
     - tap: PgDown
     - tap: Ctrl+Down
     - tap: Ctrl+Up
@@ -232,22 +234,29 @@ layers:
     - {}
     - {}
     - {}
-  - - tap: Escape
+  - - tap: LShift
     - tap: LGui
-    - {}
-    - {}
-    - {}
-    - {}
-  - - tap: LAlt
-    - tap: Tab
-    - tap: Space
-    - tap: Space
-    - tap: Enter
+    - tap: LAlt
     - tap: RAlt
+    - tap: RGui
+    - tap: RShift
+  - - {}
+    - tap: Tab
+    - tap: LCtrl
+    - tap: RCtrl
+    - tap: Enter
+    - tap: '= '
 combos:
 - key_positions:
   - 23
   - 24
+  key:
+    tap: Escape
+  layers:
+  - base
+- key_positions:
+  - 24
+  - 25
   key:
     tap: Escape
   layers:

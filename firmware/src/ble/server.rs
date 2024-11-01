@@ -96,7 +96,7 @@ impl Server for GloveServer {
         }
 
         if let Some(e) = self.uptime.on_write(handle, data) {
-           return Some(GloveServerEvent::Uptime(e))
+            return Some(GloveServerEvent::Uptime(e));
         }
 
         None

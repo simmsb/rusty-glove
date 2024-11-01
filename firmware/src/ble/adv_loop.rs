@@ -19,6 +19,7 @@ use nrf_softdevice::{
     },
     Softdevice,
 };
+use nrf_softdevice_s140::{ble_gap_conn_params_t, sd_ble_gap_conn_param_update};
 
 pub async fn advertisement_loop(
     sd: &'static Softdevice,
@@ -132,6 +133,38 @@ async fn handle_connection(
     // it might have some more work to do.
     let quitting = crate::sync::WaitCell::new();
 
+    let set_connparam = async {
+        Timer::after_secs(5).await;
+
+        if let Some(handle) = conn.handle() {
+            unsafe {
+                _ = sd_ble_gap_conn_param_update(
+                    handle,
+                    &ble_gap_conn_params_t {
+                        min_conn_interval: 12,
+                        max_conn_interval: 12,
+                        slave_latency: 99,
+                        conn_sup_timeout: 500,
+                    },
+                );
+
+                Timer::after_millis(50).await;
+
+                _ = sd_ble_gap_conn_param_update(
+                    handle,
+                    &ble_gap_conn_params_t {
+                        min_conn_interval: 6,
+                        max_conn_interval: 6,
+                        slave_latency: 99,
+                        conn_sup_timeout: 500,
+                    },
+                );
+            }
+        }
+
+        core::future::pending::<()>().await;
+    };
+
     let hid_processor = async {
         if let Some(hid) = server.hid.as_ref() {
             hid.send_reports(&conn).await;
@@ -230,7 +263,13 @@ async fn handle_connection(
     };
 
     embassy_futures::join::join(dfu_command_processor, async {
-        embassy_futures::select::select4(hid_processor, split_processor, gatt, update_ts).await;
+        embassy_futures::select::select4(
+            hid_processor,
+            split_processor,
+            gatt,
+            embassy_futures::select::select(update_ts, set_connparam),
+        )
+        .await;
         quitting.wake();
     })
     .await;

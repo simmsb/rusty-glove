@@ -19,9 +19,10 @@ unsafe impl<T> Send for MkSend<T> {}
 
 static DB: OnceCell<Database<DbFlash, ThreadModeRawMutex>> = OnceCell::new();
 
-async fn init_inner(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>, do_fmt: bool) ->
-    Database<DbFlash, ThreadModeRawMutex>
-{
+async fn init_inner(
+    flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>,
+    do_fmt: bool,
+) -> Database<DbFlash, ThreadModeRawMutex> {
     let flash = DbFlash {
         flash,
         start: unsafe { &__config_start as *const u32 as usize },

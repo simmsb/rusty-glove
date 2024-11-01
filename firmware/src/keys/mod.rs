@@ -10,10 +10,10 @@ use packed_struct::PrimitiveEnum;
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
 
 use crate::{
+    ble::hid::publish_keyboard_report,
     interboard::{self},
     messages::device_to_device::DeviceToDevice,
     side,
-    ble::hid::publish_keyboard_report,
     utils::Ticker,
 };
 
@@ -36,8 +36,7 @@ pub mod scan;
 mod unicode;
 
 /// Raw matrix presses and releases
-pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> =
-    Channel::new();
+pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> = Channel::new();
 
 /// Chord-processed events
 pub static KEY_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 2> =
@@ -92,22 +91,16 @@ async fn matrix_processor() {
                 //key_events.publish(evt).await;
                 let evts = chorder.process(evt);
                 for evt in evts {
-                    embassy_futures::join::join(
-                        key_events.publish(evt),
-                        send_to_other_side(evt),
-                    )
-                    .await;
+                    embassy_futures::join::join(key_events.publish(evt), send_to_other_side(evt))
+                        .await;
                 }
             }
             embassy_futures::select::Either::First(_) => {
                 let keys = chorder.tick();
                 for (x, y) in keys {
                     let evt = keyberon::layout::Event::Press(x, y);
-                    embassy_futures::join::join(
-                        key_events.publish(evt),
-                        send_to_other_side(evt),
-                    )
-                    .await;
+                    embassy_futures::join::join(key_events.publish(evt), send_to_other_side(evt))
+                        .await;
                 }
             }
         }
