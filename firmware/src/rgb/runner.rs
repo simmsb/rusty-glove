@@ -104,7 +104,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
     );
 
     let mut next: Option<(Instant, PerformingAnimation<'_, animations::DynAnimation>)> =
-        if crate::side::is_master() || cfg!(feature = "control_own_led_effects") {
+        if crate::side::is_master() {
             let animation = PerformingAnimation::new(
                 animations::DynAnimation::random(),
                 &mut next_colours,
@@ -131,7 +131,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
             current.reconstruct_from(next);
         }
 
-        if crate::side::is_master() && last_sync.elapsed() > SYNC_PERIOD {
+        if crate::side::is_master() && next.is_none() && last_sync.elapsed() > SYNC_PERIOD {
             last_sync = Instant::now();
 
             let cmd = DeviceToDevice::SyncAnimation(current.animation.construct_sync());
