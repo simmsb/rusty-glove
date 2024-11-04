@@ -6,14 +6,14 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitfield-struct = "0.8.0"
+bitfield-struct = "0.9.2"
 crc32fast = { version = "1.4.2", default-features = false }
 defmt = { version = ">=0.3", optional = true }
 fnv = { version = "1.0.7", default-features = false }
 heapless = { version = "0.8.0", features = ["serde"] }
 log = "0.4.22"
 postcard = { git = "https://github.com/iron-fish/postcard.git", rev = "ab978e84d783290c26a4a801f71072bb9381f97b", features = ['experimental-derive'] }
-serde = { version = "1.0.209", features = ["derive"], default-features = false }
+serde = { version = "1.0.214", features = ["derive"], default-features = false }
 
 [features]
 defmt = ["dep:defmt", "heapless/defmt-03"]

@@ -6,7 +6,7 @@ use crate::{
 };
 use embassy_boot::AlignedBuffer;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
-use embassy_time::{Duration, Timer};
+use embassy_time::Timer;
 use nrf_dfu_target::prelude::{DfuStatus, FirmwareInfo, FirmwareType, HardwareInfo};
 use nrf_softdevice::{
     ble::{

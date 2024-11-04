@@ -61,7 +61,7 @@
           '';
           arm-toolchain-plain = fenix.packages.${system}.fromToolchainFile {
             file = ./rust-toolchain.toml;
-            sha256 = "sha256-9GnMWM2pjzawUuVU7EbnPMn79rMknaA4EaxipyTgqig=";
+            sha256 = "sha256-RsORFQhrtQVybYaWATQWNpUld1l0NxcUds2jd/YWPlA=";
           };
           native-toolchain = (fenix.packages.${system}.complete.withComponents [
             "cargo"

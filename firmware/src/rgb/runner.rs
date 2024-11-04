@@ -135,7 +135,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
             last_sync = Instant::now();
 
             let cmd = DeviceToDevice::SyncAnimation(current.animation.construct_sync());
-            interboard::send_msg(cmd, 3).await;
+            let _ = interboard::try_send_msg(cmd, 3);
         }
 
         if let Ok(cmd) = RGB_CMD_CHANNEL.try_receive() {
@@ -153,7 +153,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                 super::Command::SyncAnimation(sync) => {
                     if current.animation.is(&sync) {
                         current.animation.sync(sync);
-                    } else if next.is_none() {
+                    } else if let animations::DynAnimation::Null(_) = current.animation {
                         next = Some((
                             Instant::now(),
                             PerformingAnimation::new(

@@ -59,16 +59,47 @@ async fn init_inner(
     db
 }
 
+enum TypeIdProbe {}
+
 pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
     let mut db = init_inner(flash, false).await;
 
-    if let Err(ekv::WriteError::Full) = async {
+    if let None = async {
+        const PROBE_KEY: &[u8] = b"type-id-probe";
+        let tx = db.read_transaction().await;
+
+        let expected = unsafe {
+            core::mem::transmute::<_, [u8; core::mem::size_of::<TypeId>()]>(
+                TypeId::of::<TypeIdProbe>(),
+            )
+        };
+
+        let mut v = [0u8; core::mem::size_of::<TypeId>()];
+        match tx.read(PROBE_KEY, &mut v).await {
+            Ok(len) => {
+                if &expected != &v[..len] {
+                    crate::log::warn!(
+                        "Type id probe failed, expecting: {}, got: {}",
+                        expected,
+                        v[..len]
+                    );
+
+                    return None;
+                }
+            }
+            Err(ekv::ReadError::KeyNotFound) => {}
+            Err(_) => return None,
+        };
+
+        drop(tx);
+
+        // check we can write a key
         let mut tx = db.write_transaction().await;
 
-        tx.write(&[0], &[0]).await?;
-        _ = tx.commit().await;
+        tx.write(PROBE_KEY, &expected).await.ok()?;
+        tx.commit().await.ok();
 
-        Ok(())
+        Some(())
     }
     .await
     {

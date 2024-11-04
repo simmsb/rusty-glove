@@ -7,9 +7,7 @@
     impl_trait_in_assoc_type,
     trait_alias,
     maybe_uninit_uninit_array,
-    const_maybe_uninit_uninit_array,
     maybe_uninit_array_assume_init,
-    const_maybe_uninit_array_assume_init,
     const_maybe_uninit_write,
     const_for,
     async_closure,
@@ -19,7 +17,6 @@
 use ble::dfu::DfuConfig;
 use embassy_executor::Spawner;
 use embassy_nrf::{
-    bind_interrupts,
     config::{HfclkSource, LfclkSource},
     gpio::{Input, Level, Output, OutputDrive, Pin, Pull},
     interrupt::InterruptExt,
@@ -124,9 +121,16 @@ async fn watchdog_task() {
     }
 }
 
-bind_interrupts!(struct UsbIrqs {
-    USBD => embassy_nrf::usb::InterruptHandler<embassy_nrf::peripherals::USBD>;
-});
+mod ints {
+    #![allow(non_local_definitions)]
+
+    use embassy_nrf::bind_interrupts;
+
+    bind_interrupts!(pub struct UsbIrqs {
+        USBD => embassy_nrf::usb::InterruptHandler<embassy_nrf::peripherals::USBD>;
+    });
+}
+pub use ints::UsbIrqs;
 
 // bind_interrupts!(struct I2SIrqs {
 //     I2S => embassy_nrf::i2s::InterruptHandler<embassy_nrf::peripherals::I2S>;
@@ -284,6 +288,9 @@ pub async fn main(spawner: Spawner) {
     log::info!("All set up, have fun :)");
 
     {
+        // wait a bit before marking good firmware
+        Timer::after_secs(4).await;
+
         let mut magic = embassy_boot::AlignedBuffer([0; 4]);
         let mut state = embassy_boot_nrf::FirmwareState::new(dfuconfig.state(), &mut magic.0);
 
