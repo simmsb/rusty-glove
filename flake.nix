@@ -46,7 +46,7 @@
       ];
       perSystem = { config, pkgs, system, lib, ... }:
         let
-          poetry2nix = inputs.poetry2nix.lib.mkPoetry2Nix {inherit pkgs;};
+          poetry2nix = inputs.poetry2nix.lib.mkPoetry2Nix { inherit pkgs; };
 
           keymap-drawer = poetry2nix.mkPoetryApplication {
             projectDir = inputs.keymap-drawer;
@@ -71,24 +71,24 @@
             # "rustfmt"
           ]);
           arm-toolchain = pkgs.runCommand "turbowaker-rust" { } ''
-              echo "test $out ${arm-toolchain-plain}"
-              cp -RL ${arm-toolchain-plain} $out
-              chmod -R +rwx $out
+            echo "test $out ${arm-toolchain-plain}"
+            cp -RL ${arm-toolchain-plain} $out
+            chmod -R +rwx $out
 
-              echo "doing patch"
+            echo "doing patch"
 
-              patch $out/lib/rustlib/src/rust/library/core/Cargo.toml ${./turbowaker/Cargo.toml.patch}
-              patch $out/lib/rustlib/src/rust/library/core/src/task/wake.rs ${./turbowaker/wake.rs.patch}
-            '';
-          
+            patch $out/lib/rustlib/src/rust/library/core/Cargo.toml ${./turbowaker/Cargo.toml.patch}
+            patch $out/lib/rustlib/src/rust/library/core/src/task/wake.rs ${./turbowaker/wake.rs.patch}
+          '';
+
           toolchain = fenix.packages.${system}.combine [ arm-toolchain native-toolchain ];
           craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
 
           src = craneLib.cleanCargoSource ./.;
-          
-          package = { target ? "thumbv7em-none-eabihf", args ? "", profile ? "release" }: craneLib.buildPackage {
+
+          package = { target ? "thumbv7em-none-eabihf", args ? "", profile ? "release", defmt ? "off" }: craneLib.buildPackage {
             inherit src;
-          
+
             cargoVendorDir = craneLib.vendorMultipleCargoDeps {
               inherit (craneLib.findCargoFiles src) cargoConfigs;
               cargoLockList = [
@@ -102,15 +102,16 @@
                 # to the repo and import it with `./path/to/rustlib/Cargo.lock` which
                 # will avoid IFD entirely but will require manually keeping the file
                 # up to date!
-                "${toolchain}/lib/rustlib/src/rust/Cargo.lock"
+                "${toolchain}/lib/rustlib/src/rust/library/Cargo.lock"
               ];
             };
 
             cargoExtraArgs = "-Z build-std=core,panic_abort,alloc -Z build-std-features=optimize_for_size,panic_immediate_abort,core/turbowakers --target ${target} ${args}";
             CARGO_PROFILE = profile;
+            DEFMT_LOG = defmt;
             pname = "rusty-glove";
             version = "0.1.0";
-            
+
             strictDeps = true;
             doCheck = false;
             buildInputs = [
@@ -120,9 +121,9 @@
               pkgs.libiconv
             ];
           };
-          elf = pkg: name: pkgs.runCommandLocal "mkelf" { } ''
+          elf = pkg: name: binname: pkgs.runCommandLocal "mkelf" { } ''
             mkdir -p $out
-            cp ${pkg}/bin/${name} $out/${name}.elf
+            cp ${pkg}/bin/${name} $out/${binname}.elf
           '';
           binary = pkg: name: pkgs.runCommandLocal "mkbinary" { buildInputs = [ pkgs.llvm ]; } ''
             mkdir -p $out
@@ -138,6 +139,23 @@
               inputs.ble-dfu.overlays.default
               inputs.elf2uf2.overlays.default
             ];
+          };
+
+          packages = builtins.mapAttrs
+            (name: value: elf
+              (package {
+                args = "--bin binary -p rusty-glove --no-default-features --features '${value},default_unselected_side,reboot_on_panic'";
+              }) "binary"
+              name)
+            { left = "side_left"; right = "side_right"; } // {
+            default = pkgs.symlinkJoin {
+              name = "combied";
+              paths = [
+                packages.left
+                packages.right
+              ];
+            };
+
           };
 
           devShells.default = craneLib.devShell {
