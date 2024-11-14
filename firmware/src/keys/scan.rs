@@ -47,7 +47,10 @@ where
         }
     }
 
-    pub fn scan(&mut self) -> impl Iterator<Item = keyberon::layout::Event> {
+    /// (translated, raw)
+    pub fn scan(
+        &mut self,
+    ) -> impl Iterator<Item = (keyberon::layout::Event, keyberon::layout::Event)> {
         let scan_result = self.cols.scan_matrix(&self.rows, &mut self.debouncers);
 
         scan_result.into_iter().enumerate().flat_map(|(j, row)| {
@@ -55,12 +58,19 @@ where
                 .enumerate()
                 .filter_map(move |(i, press_state)| {
                     press_state.map(|press| {
-                        let (x, y) = patch_pos(j as u8, i as u8);
+                        let (i, j) = (i as u8, j as u8);
+                        let (x, y) = patch_pos(j, i);
                         if press {
                             crate::log::debug!("kp: ({}, {}) (orig: ({}, {}))", x, y, j, i);
-                            keyberon::layout::Event::Press(y, x)
+                            (
+                                keyberon::layout::Event::Press(y, x),
+                                keyberon::layout::Event::Press(j, i),
+                            )
                         } else {
-                            keyberon::layout::Event::Release(y, x)
+                            (
+                                keyberon::layout::Event::Release(y, x),
+                                keyberon::layout::Event::Release(j, i),
+                            )
                         }
                     })
                 })

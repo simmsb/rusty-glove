@@ -13,6 +13,9 @@ right:
 
 both: left right
 
+bootloader:
+  env DEFMT_LOG=trace cargo run -p bootloader --release --bin bootloader --features turbowakers
+
 left_uf2: left
   elf2uf2-rs --family-id 0x9807B007 target/left.elf left.uf2
 right_uf2: right

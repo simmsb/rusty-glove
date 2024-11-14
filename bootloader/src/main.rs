@@ -28,7 +28,7 @@ fn main() -> ! {
     defmt::info!("Bootloader starting");
 
     let mut wdt_config = wdt::Config::default();
-    wdt_config.timeout_ticks = 32768 * 20; // timeout seconds
+    wdt_config.timeout_ticks = 32768 * 60; 
     wdt_config.run_during_sleep = true;
     wdt_config.run_during_debug_halt = false;
 
@@ -112,5 +112,5 @@ unsafe fn DefaultHandler(_: i16) -> ! {
 #[cfg(not(feature = "panic-probe"))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
-    cortex_m::asm::udf();
+    loop { cortex_m::asm::nop(); }
 }

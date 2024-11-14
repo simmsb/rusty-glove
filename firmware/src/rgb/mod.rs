@@ -24,6 +24,8 @@ pub fn init(spawner: &Spawner, pwm: PWM0, pin: AnyPin) {
     let d = driver::Ws2812::new(pwm, pin);
 
     spawner.must_spawn(runner::rgb_runner(d));
+    spawner.must_spawn(runner::apply_keypresses());
+    spawner.must_spawn(runner::sparkle_ticker());
     spawner.must_spawn(command_listener());
 
     if side::is_master() {

@@ -1,14 +1,16 @@
-use core::array;
+use core::{array, num::NonZeroU8};
 
 use cichlid::ColorRGB;
 use embassy_futures::select::{select, select3};
 use embassy_nrf::peripherals::PWM0;
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_time::{Duration, Instant, Timer};
 use fixed::types::{U16F16, U32F32};
 use fixed_macro::fixed;
+use keyberon::layout::Event;
 
 use crate::{
-    interboard, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker,
+    interboard, keys::AUX_MATRIX_EVENTS, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker
 };
 
 use super::{
@@ -33,6 +35,12 @@ fn ease_fade_on_time(duration: Duration) -> u8 {
         let d = U32F32::saturating_from_num(FADE_DURATION.as_ticks() as u32);
         ease_fade((n / d).saturating_to_num())
     }
+}
+
+fn ease_fade_on_u8(n: u8) -> u8 {
+    let n = U32F32::saturating_from_num(n);
+    let d = fixed!(255: U32F32);
+    ease_fade((n / d).saturating_to_num())
 }
 
 struct PerformingAnimation<'a, T> {
@@ -100,7 +108,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
     let mut current = PerformingAnimation::new(
         animations::DynAnimation::Null(animations::null::Null),
         &mut current_colours,
-        lights,
+        &lights.lights,
     );
 
     let mut next: Option<(Instant, PerformingAnimation<'_, animations::DynAnimation>)> =
@@ -108,7 +116,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
             let animation = PerformingAnimation::new(
                 animations::DynAnimation::random(),
                 &mut next_colours,
-                lights,
+                &lights.lights,
             );
 
             // reporo the animation to the other side
@@ -146,7 +154,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                         PerformingAnimation::new(
                             animations::DynAnimation::new_from_sync(a),
                             &mut next_colours,
-                            lights,
+                            &lights.lights,
                         ),
                     ));
                 }
@@ -159,7 +167,7 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                             PerformingAnimation::new(
                                 animations::DynAnimation::new_from_sync(sync),
                                 &mut next_colours,
-                                lights,
+                                &lights.lights,
                             ),
                         ));
                     }
@@ -183,13 +191,17 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                         break;
                     }
                     embassy_futures::select::Either3::Third(_) => {
+                        let sparkles = KEY_SPARKLES.lock().await;
                         let corrected_colours =
                             array::from_fn::<_, { NUM_LEDS as usize }, _>(|i| {
                                 let mut a = current.colours[i];
                                 let b = next.colours[i];
                                 a.blend(b, ease_fade_on_time(fade_start.elapsed()));
-                                errors[i].process(a)
+                                let c = maybe_sparkle(sparkles[i], a);
+                                errors[i].process(c)
                             });
+
+                        drop(sparkles);
 
                         driver.write(&corrected_colours).await;
                     }
@@ -200,10 +212,14 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                         break;
                     }
                     embassy_futures::select::Either::Second(_) => {
+                        let sparkles = KEY_SPARKLES.lock().await;
                         let corrected_colours =
                             array::from_fn::<_, { NUM_LEDS as usize }, _>(|i| {
-                                errors[i].process(current.colours[i])
+                                let c = maybe_sparkle(sparkles[i], current.colours[i]);
+                                errors[i].process(c)
                             });
+
+                        drop(sparkles);
 
                         driver.write(&corrected_colours).await;
                     }
@@ -211,6 +227,61 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
             }
         }
     }
+}
+
+const SPARKLE_COLOUR: ColorRGB = ColorRGB::White;
+
+fn maybe_sparkle(sparkle: Option<NonZeroU8>, base: ColorRGB) -> ColorRGB {
+    let Some(sparkle) = sparkle else { return base; };
+
+    let mut c = SPARKLE_COLOUR;
+    c.blend(base, ease_fade_on_u8(sparkle.get()));
+
+    c
+}
+
+static KEY_SPARKLES: embassy_sync::mutex::Mutex<
+    ThreadModeRawMutex,
+    [Option<NonZeroU8>; NUM_LEDS as usize],
+> = embassy_sync::mutex::Mutex::new([None; NUM_LEDS as usize]);
+
+#[embassy_executor::task]
+pub async fn apply_keypresses() {
+    let mut sub = AUX_MATRIX_EVENTS.subscriber().unwrap();
+
+    let lights = if get_side().is_left() {
+        &layout::LEFT
+    } else {
+        &layout::RIGHT
+    };
+
+    loop {
+        let evt = sub.next_message_pure().await;
+
+        let Event::Press(x, y) = evt else { continue; };
+
+        let idx = lights.inverse_index[x as usize][y as usize];
+
+        let mut l = KEY_SPARKLES.lock().await;
+        l[idx as usize] = Some(NonZeroU8::MIN);
+        drop(l);
+    }
+}
+
+#[embassy_executor::task]
+pub async fn sparkle_ticker() {
+    loop {
+        Timer::after(Duration::from_hz(255)).await;
+
+        let mut l = KEY_SPARKLES.lock().await;
+        for sparkle in l.iter_mut() {
+            *sparkle = sparkle.and_then(|n| {
+                n.checked_add(1)
+            });
+        }
+        drop(l);
+    }
+
 }
 
 #[derive(Default, Clone, Copy)]

@@ -1,4 +1,5 @@
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
+use embassy_time::Timer;
 use nrf_softdevice::ble::Connection;
 use packed_struct::PackedStruct;
 use usbd_human_interface_device::device::keyboard::{
@@ -47,8 +48,15 @@ impl HidService {
     pub async fn send_reports(&self, conn: &Connection) -> ! {
         loop {
             let report = KEYBOARD_REPORTS.receive().await;
+            let pack = report.pack().unwrap();
 
-            let _ = self.input_report_notify(conn, &report.pack().unwrap());
+            for _ in 0..5 {
+                if self.input_report_notify(conn, &pack).is_ok() {
+                    break;
+                }
+
+                Timer::after_micros(100).await;
+            }
         }
     }
 }

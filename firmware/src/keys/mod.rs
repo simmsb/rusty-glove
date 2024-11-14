@@ -38,6 +38,10 @@ mod unicode;
 /// Raw matrix presses and releases
 pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> = Channel::new();
 
+/// Raw matrix presses and releases -- scanner might miss sending to this channel if delayed
+pub static AUX_MATRIX_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 1> =
+    PubSubChannel::new();
+
 /// Chord-processed events
 pub static KEY_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 2> =
     PubSubChannel::new();
@@ -67,10 +71,12 @@ async fn matrix_scanner(mut scanner: ScannerInstance<'static>) {
     // TODO: pause when no activity
 
     let matrix_events = MATRIX_EVENTS.sender();
+    let aux_matrix_events = AUX_MATRIX_EVENTS.publisher().unwrap();
 
     loop {
-        for evt in scanner.scan() {
+        for (evt, raw) in scanner.scan() {
             matrix_events.send(evt).await;
+            aux_matrix_events.publish_immediate(raw);
         }
 
         // use a timer instead of a ticker here, prevents getting stuck if matrix_events freezes
