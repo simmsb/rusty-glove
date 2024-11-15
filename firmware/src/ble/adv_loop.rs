@@ -155,7 +155,7 @@ async fn handle_connection(
                     &ble_gap_conn_params_t {
                         min_conn_interval: 6,
                         max_conn_interval: 8,
-                        slave_latency: 99,
+                        slave_latency: 30,
                         conn_sup_timeout: 500,
                     },
                 );
