@@ -9,6 +9,7 @@ mod ble_central;
 pub mod channel;
 
 pub fn init_central(spawner: &Spawner, sd: &'static Softdevice) {
+    crate::log::trace!("starting central");
     spawner.must_spawn(central(sd));
 }
 

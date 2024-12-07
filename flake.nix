@@ -30,6 +30,9 @@
       url = "github:nix-community/poetry2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    bmp.url = "github:blackmagic-debug/blackmagic";
+    bmp.flake = false;
   };
 
   outputs =
@@ -56,12 +59,51 @@
             };
           };
 
+          blackmagic_ =
+            pkgs.stdenv.mkDerivation rec {
+              pname = "blackmagic";
+              version = "git";
+              firmwareVersion = "v${version}";
+
+              src = inputs.bmp;
+
+              nativeBuildInputs = with pkgs; [
+                meson
+                ninja
+                gcc-arm-embedded
+                pkg-config
+                python3
+              ];
+
+              buildInputs = with pkgs; [
+                hidapi
+                libftdi1
+                libusb1
+              ];
+
+              strictDeps = true;
+
+              postPatch = ''
+                # Fix scripts that generate headers:
+                for f in $(find scripts libopencm3/scripts -type f); do
+                  patchShebangs "$f"
+                done
+              '';
+
+              installPhase = ''
+                mkdir -p "$out/bin"
+                cp blackmagic $out/bin
+              '';
+
+              enableParallelBuilding = true;
+            };
+
           uf2conv = pkgs.writeScriptBin "uf2conv" ''
             ${pkgs.python3}/bin/python ${inputs.uf2}/utils/uf2conv.py $*
           '';
           arm-toolchain-plain = fenix.packages.${system}.fromToolchainFile {
             file = ./rust-toolchain.toml;
-            sha256 = "sha256-RsORFQhrtQVybYaWATQWNpUld1l0NxcUds2jd/YWPlA=";
+            sha256 = "sha256-dbdRPCQQnuQ66Ie8CmgGutRLK61weyYlAhcERrz2koE=";
           };
           native-toolchain = (fenix.packages.${system}.complete.withComponents [
             "cargo"
@@ -159,7 +201,17 @@
           };
 
           devShells.default = craneLib.devShell {
-            packages = with pkgs; [ libiconv just keylayout_lang uf2conv elf2uf2_rs keymap-drawer dfu_ble ];
+            packages = with pkgs; [
+              libiconv
+              just
+              keylayout_lang
+              uf2conv
+              elf2uf2_rs
+              keymap-drawer
+              dfu_ble
+              blackmagic_
+              gcc-arm-embedded
+            ];
           };
         };
     };

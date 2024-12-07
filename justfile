@@ -48,7 +48,7 @@ draw:
   keylayout_lang emit -m keymap-drawer layouts/rusty-glove.kl > layouts/rusty-glove.yaml
   keymap draw layouts/rusty-glove.yaml > layouts/rusty-glove.svg
 
-DEFMT_LOG_DEF_TRACE := "trace,ekv=info"
+DEFMT_LOG_DEF_TRACE := env("DEFMT", "trace,ekv=info,nrf_softdevice=trace")
 
 debug_left:
   env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_left,default_unselected_side
@@ -58,3 +58,36 @@ debug_right:
 
 attach_right:
   probe-rs attach --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug-trace/binary
+
+TMPDIR := `mktemp -d`
+
+BM_FLASH := "arm-none-eabi-gdb -nx --batch \
+    -ex 'target extended-remote :2000' \
+    -ex 'monitor swdp_scan' \
+    -ex 'attach 1' \
+    -ex 'load' \
+    -ex 'compare-sections' \
+    -ex 'kill'"
+
+bm_debug BINARY:
+  #!/bin/sh
+  cat > {{TMPDIR}}/layout.kdl <<EOF
+    layout {
+      pane command="blackmagic"
+      pane command="arm-none-eabi-gdb" {
+        args "-nx" "-ex" "set pagination off" "-ex" "target extended-remote :2000" "-ex" "monitor swdp_scan" "-ex" "attach 1" "-ex" "load" "-ex" "compare-sections" "-ex" "kill" "-ex" "monitor swdp_scan" "-ex" "attach 1" "{{BINARY}}"
+      }
+      pane command="probe-rs" {
+        args "attach" "--protocol" "swd" "--chip" "nRF52840_xxAA" "{{BINARY}}"
+      } 
+    }
+  EOF
+  zellij -n {{TMPDIR}}/layout.kdl
+
+#  blackmagic &
+#  {{BM_FLASH}} {{BINARY}}
+#  probe-rs attach --protocol swd --chip nRF52840_xxAA {{BINARY}}
+
+bm_left:
+  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- target/left.elf
+  just bm_debug target/left.elf

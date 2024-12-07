@@ -21,6 +21,7 @@ mod runner;
 pub(super) static RGB_CMD_CHANNEL: Channel<ThreadModeRawMutex, Command, 1> = Channel::new();
 
 pub fn init(spawner: &Spawner, pwm: PWM0, pin: AnyPin) {
+    crate::log::info!("Initialising RGB");
     let d = driver::Ws2812::new(pwm, pin);
 
     spawner.must_spawn(runner::rgb_runner(d));

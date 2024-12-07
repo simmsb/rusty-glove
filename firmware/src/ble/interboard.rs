@@ -1,3 +1,4 @@
+use embassy_time::Timer;
 use nrf_softdevice::ble::Connection;
 use postcard::experimental::max_size::MaxSize;
 
@@ -33,7 +34,7 @@ impl SplitService {
         &self,
         conn: &Connection,
         mut get_tx: impl async FnMut() -> DeviceToDevice,
-    ) {
+    ) -> ! {
         loop {
             let msg = get_tx().await;
             let mut buf = [0u8; DeviceToDevice::POSTCARD_MAX_SIZE];
@@ -41,9 +42,15 @@ impl SplitService {
 
             crate::log::trace!("Sending message: {:?}", msg);
 
-            if self.to_central_notify(conn, &buf).is_err() {
-                // XXX: us exiting here will trigger a reconnect, is that correct?
-            };
+            for n in 0u8..20 {
+                if self.to_central_notify(conn, &buf).is_ok() {
+                    break;
+                };
+
+                crate::log::trace!("Failed to send, backing off");
+
+                Timer::after_micros(100 + n as u64 * 500).await;
+            }
         }
     }
 }

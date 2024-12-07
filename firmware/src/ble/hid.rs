@@ -50,12 +50,14 @@ impl HidService {
             let report = KEYBOARD_REPORTS.receive().await;
             let pack = report.pack().unwrap();
 
-            for _ in 0..5 {
+            for n in 0u8..20 {
                 if self.input_report_notify(conn, &pack).is_ok() {
                     break;
                 }
 
-                Timer::after_micros(100).await;
+                crate::log::trace!("Failed to send, backing off");
+
+                Timer::after_micros(100 + n as u64 * 500).await;
             }
         }
     }

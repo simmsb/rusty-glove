@@ -22,6 +22,7 @@ pub fn init_peripheral(
     server: GloveServer,
     dfuconfig: DfuConfig,
 ) {
+    crate::log::trace!("Setting up ble (peripheral)");
     spawner.must_spawn(peripheral(sd, server, dfuconfig));
 }
 

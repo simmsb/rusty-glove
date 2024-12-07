@@ -28,6 +28,7 @@ impl Metrics {
 }
 
 pub async fn init(spawner: &Spawner) {
+    crate::log::info!("Initialising metrics");
     if let Some(m) = flash::get::<Metrics>().await {
         utils::log::info!("Loaded up metrics with: {:?}", m);
         *CURRENT_METRICS.lock().await = m.clone();

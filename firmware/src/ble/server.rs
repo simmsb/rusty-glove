@@ -66,6 +66,22 @@ pub enum GloveServerEvent {
 impl Server for GloveServer {
     type Event = GloveServerEvent;
 
+    // fn on_notify_tx_complete(
+    //     &self,
+    //     _conn: &nrf_softdevice::ble::Connection,
+    //     handle: u8,
+    // ) -> Option<Self::Event> {
+    //     if let Some(e) = self
+    //         .split
+    //         .as_ref()
+    //         .and_then(|x| x.on_notify_tx_complete(handle))
+    //     {
+    //         return Some(GloveServerEvent::Split(e));
+    //     }
+
+    //     None
+    // }
+
     fn on_write(
         &self,
         _conn: &nrf_softdevice::ble::Connection,

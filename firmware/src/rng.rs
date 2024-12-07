@@ -39,8 +39,10 @@ impl rand::RngCore for MyRng {
 }
 
 pub async fn init(sd: &Softdevice) {
+    crate::log::info!("Initialising the RNG");
     let mut buf = [0u8; 8];
-    while nrf_softdevice::random_bytes(sd, &mut buf).is_err() {
+    while let Err(e) = nrf_softdevice::random_bytes(sd, &mut buf) {
+        crate::log::trace!("Random failed with: {}", e);
         embassy_time::Timer::after_millis(10).await;
     }
     crate::log::debug!("Got random bytes: {=[u8; 8]}", buf);
@@ -48,4 +50,5 @@ pub async fn init(sd: &Softdevice) {
     seed ^= splitmix64(Instant::now().as_ticks());
 
     let _ = RNG.set(Mutex::new(RefCell::new(SmallRng::seed_from_u64(seed))));
+    crate::log::info!("RNG initialised");
 }

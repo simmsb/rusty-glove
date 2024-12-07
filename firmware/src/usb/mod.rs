@@ -15,7 +15,6 @@ pub use device::MAX_PACKET_SIZE;
 pub mod channel;
 pub mod device;
 pub mod hid;
-pub mod picotool;
 
 mod usb_driver {
     use super::GUESSED_OS;
@@ -51,7 +50,6 @@ pub fn init(spawner: &Spawner, driver: Driver<'static, USBD, &'static SoftwareVb
     let mut builder = device::init_usb(driver);
 
     channel::init(spawner, &mut builder);
-    picotool::init(&mut builder);
 
     if side::is_master() {
         hid::init(spawner, &mut builder);

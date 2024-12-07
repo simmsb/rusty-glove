@@ -62,6 +62,7 @@ async fn init_inner(
 enum TypeIdProbe {}
 
 pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
+    crate::log::info!("Initialising flash and database");
     let mut db = init_inner(flash, false).await;
 
     if let None = async {
@@ -110,6 +111,8 @@ pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
     }
 
     DB.set(db).ok().unwrap();
+
+    crate::log::info!("Flash and database initialised");
 }
 
 async fn get_db() -> &'static Database<DbFlash, ThreadModeRawMutex> {

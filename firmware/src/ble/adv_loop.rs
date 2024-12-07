@@ -7,6 +7,7 @@ use crate::{
 use embassy_boot::AlignedBuffer;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
 use embassy_time::Timer;
+use futures::never::Never;
 use nrf_dfu_target::prelude::{DfuStatus, FirmwareInfo, FirmwareType, HardwareInfo};
 use nrf_softdevice::{
     ble::{
@@ -19,7 +20,7 @@ use nrf_softdevice::{
     },
     Softdevice,
 };
-use nrf_softdevice_s140::{ble_gap_conn_params_t, sd_ble_gap_conn_param_update};
+use nrf_softdevice_s140::ble_gap_conn_params_t;
 
 pub async fn advertisement_loop(
     sd: &'static Softdevice,
@@ -57,9 +58,8 @@ pub async fn advertisement_loop(
         )
         .build();
 
-    let p = unsafe { embassy_nrf::pac::Peripherals::steal() };
-    let part = p.FICR.info.part.read().part().bits();
-    let variant = p.FICR.info.variant.read().variant().bits();
+    let part = embassy_nrf::pac::FICR.info().part().read().part().0;
+    let variant = embassy_nrf::pac::FICR.info().variant().read();
 
     let spawner = embassy_executor::Spawner::for_current_executor().await;
 
@@ -136,41 +136,42 @@ async fn handle_connection(
     let set_connparam = async {
         Timer::after_secs(5).await;
 
-        if let Some(handle) = conn.handle() {
-            unsafe {
-                _ = sd_ble_gap_conn_param_update(
-                    handle,
-                    &ble_gap_conn_params_t {
-                        min_conn_interval: 12,
-                        max_conn_interval: 12,
-                        slave_latency: 99,
-                        conn_sup_timeout: 500,
-                    },
-                );
+        let params = conn.conn_params();
+        crate::log::info!(
+            "Current params. min: {}, max: {}, lat: {}, timeout: {}",
+            params.min_conn_interval,
+            params.max_conn_interval,
+            params.slave_latency,
+            params.conn_sup_timeout
+        );
 
-                Timer::after_millis(50).await;
+        if params.max_conn_interval > 12 {
+            _ = conn.set_conn_params(ble_gap_conn_params_t {
+                min_conn_interval: 12,
+                max_conn_interval: 12,
+                slave_latency: 99,
+                conn_sup_timeout: 500,
+            });
 
-                _ = sd_ble_gap_conn_param_update(
-                    handle,
-                    &ble_gap_conn_params_t {
-                        min_conn_interval: 6,
-                        max_conn_interval: 8,
-                        slave_latency: 30,
-                        conn_sup_timeout: 500,
-                    },
-                );
-            }
+            Timer::after_millis(50).await;
+
+            _ = conn.set_conn_params(ble_gap_conn_params_t {
+                min_conn_interval: 6,
+                max_conn_interval: 6,
+                slave_latency: 30,
+                conn_sup_timeout: 500,
+            });
         }
 
-        core::future::pending::<()>().await;
+        core::future::pending::<Never>().await
     };
 
     let hid_processor = async {
         if let Some(hid) = server.hid.as_ref() {
-            hid.send_reports(&conn).await;
+            hid.send_reports(&conn).await
         } else {
             // if there's no hid server this one should run forever
-            core::future::pending::<()>().await;
+            core::future::pending::<Never>().await
         }
     };
 
@@ -178,10 +179,10 @@ async fn handle_connection(
         if let Some(split) = server.split.as_ref() {
             let rx_fn = || async { COMMANDS_TO_OTHER_SIDE.receive().await.msg };
 
-            split.transmit_loop(&conn, rx_fn).await;
+            split.transmit_loop(&conn, rx_fn).await
         } else {
             // if there's no hid server this one should run forever
-            core::future::pending::<()>().await;
+            core::future::pending::<Never>().await
         }
     };
 
@@ -230,28 +231,33 @@ async fn handle_connection(
 
     let msg_pub = THIS_SIDE_MESSAGE_BUS.publisher().unwrap();
 
-    let gatt = gatt_server::run(&conn, &server, |e| match e {
-        crate::ble::server::GloveServerEvent::DFU(e) => {
-            if let Err(_) = msg_chan.try_send(e) {
-                crate::log::error!(
-                    "Missed a DFU packet while transferring it to async land... oops"
-                );
+    let gatt = async {
+        let exit_reason = gatt_server::run(&conn, &server, |e| match e {
+            crate::ble::server::GloveServerEvent::DFU(e) => {
+                if let Err(_) = msg_chan.try_send(e) {
+                    crate::log::error!(
+                        "Missed a DFU packet while transferring it to async land... oops"
+                    );
+                }
             }
-        }
-        crate::ble::server::GloveServerEvent::HID(_) => {
-            // there's nothing to do here
-        }
-        crate::ble::server::GloveServerEvent::Split(evt) => {
-            if let Some(split) = server.split.as_ref() {
-                split.process(evt, |e| {
-                    let _ = msg_pub.try_publish(e);
-                });
+            crate::ble::server::GloveServerEvent::HID(_) => {
+                // there's nothing to do here
             }
-        }
-        crate::ble::server::GloveServerEvent::Uptime(_) => {
-            // there's nothing to do here
-        }
-    });
+            crate::ble::server::GloveServerEvent::Split(evt) => {
+                if let Some(split) = server.split.as_ref() {
+                    split.process(evt, |e| {
+                        let _ = msg_pub.try_publish(e);
+                    });
+                }
+            }
+            crate::ble::server::GloveServerEvent::Uptime(_) => {
+                // there's nothing to do here
+            }
+        })
+        .await;
+
+        crate::log::debug!("GATT server exited with reason: {}", exit_reason);
+    };
 
     let update_ts = async {
         loop {

@@ -1,3 +1,4 @@
+use embassy_time::Timer;
 use nrf_softdevice::{
     ble::{
         central::{connect, ConnectConfig},
@@ -29,29 +30,42 @@ async fn process_open_connection(
 ) {
     client.to_central_cccd_write(true).await.unwrap();
 
-    let client_fut = gatt_client::run(conn, &client, |evt| match evt {
-        SplitClientEvent::ToCentralNotification(buf) => {
-            let Ok(deser) = postcard::from_bytes::<DeviceToDevice>(&buf) else {
-                return;
-            };
+    let client_fut = async {
+        let reason = gatt_client::run(conn, &client, |evt| match evt {
+            SplitClientEvent::ToCentralNotification(buf) => {
+                let Ok(deser) = postcard::from_bytes::<DeviceToDevice>(&buf) else {
+                    return;
+                };
 
-            on_rx(deser);
-        }
-    });
+                on_rx(deser);
+            }
+        })
+        .await;
+
+        crate::log::debug!("Peripheral disconnected with reason: {}", reason);
+    };
 
     let sender_fut = async {
-        loop {
+        'outer: loop {
             let msg = get_tx().await;
             let mut buf = [0u8; DeviceToDevice::POSTCARD_MAX_SIZE];
             postcard::to_slice(&msg, &mut buf).unwrap();
 
-            if client
-                .to_peripheral_write_without_response(&buf)
-                .await
-                .is_err()
-            {
-                break;
-            };
+            for n in 0u8..20 {
+                if client
+                    .to_peripheral_write_without_response(&buf)
+                    .await
+                    .is_ok()
+                {
+                    continue 'outer;
+                };
+
+                crate::log::trace!("Failed to send, backing off");
+
+                Timer::after_micros(100 + n as u64 * 500).await;
+            }
+
+            break 'outer;
         }
     };
 
@@ -69,7 +83,10 @@ pub async fn central_loop(
         let mut config = ConnectConfig::default();
         config.scan_config.whitelist = Some(&whitelist);
         config.conn_params.min_conn_interval = 6;
+        config.conn_params.slave_latency = 30;
         config.conn_params.max_conn_interval = 6;
+
+        crate::log::debug!("Scanning for peripheral");
 
         let conn = match connect(sd, &config).await {
             Ok(conn) => conn,
@@ -88,6 +105,8 @@ pub async fn central_loop(
                 continue;
             }
         };
+
+        crate::log::debug!("Connected to peripheral");
 
         process_open_connection(client, &conn, &mut on_rx, &mut get_tx).await;
     }

@@ -154,7 +154,7 @@ pub async fn main(spawner: Spawner) {
     };
 
     embassy_nrf::interrupt::USBD.set_priority(embassy_nrf::interrupt::Priority::P2);
-    embassy_nrf::interrupt::POWER_CLOCK.set_priority(embassy_nrf::interrupt::Priority::P2);
+    embassy_nrf::interrupt::CLOCK_POWER.set_priority(embassy_nrf::interrupt::Priority::P2);
     embassy_nrf::interrupt::PWM0.set_priority(embassy_nrf::interrupt::Priority::P2);
     embassy_nrf::interrupt::RNG.set_priority(embassy_nrf::interrupt::Priority::P3);
 
@@ -198,14 +198,18 @@ pub async fn main(spawner: Spawner) {
 
     let sd = Softdevice::enable(&config);
 
-    set_address(
-        sd,
-        &if side::is_master() {
-            interboard::ble::CENTRAL_ADDRESS
-        } else {
-            interboard::ble::PERIPHERAL_ADDRESS
-        },
-    );
+    if !side::is_master() {
+        set_address(sd, &interboard::ble::PERIPHERAL_ADDRESS);
+    }
+
+    // set_address(
+    //     sd,
+    //     &if side::is_master() {
+    //         interboard::ble::CENTRAL_ADDRESS
+    //     } else {
+    //         interboard::ble::PERIPHERAL_ADDRESS
+    //     },
+    // );
 
     log::trace!("Configured softdevice");
 
@@ -222,11 +226,9 @@ pub async fn main(spawner: Spawner) {
     let host_server = ble::make_ble_server(sd);
 
     if side::is_master() {
-        log::trace!("starting central");
         interboard::init_central(&spawner, sd);
     }
 
-    log::trace!("Setting up ble");
     ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
 
     spawner.must_spawn(softdevice_task(sd));
@@ -289,7 +291,7 @@ pub async fn main(spawner: Spawner) {
 
     {
         // wait a bit before marking good firmware
-        Timer::after_secs(4).await;
+        Timer::after_secs(2).await;
 
         let mut magic = embassy_boot::AlignedBuffer([0; 4]);
         let mut state = embassy_boot_nrf::FirmwareState::new(dfuconfig.state(), &mut magic.0);

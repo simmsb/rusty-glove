@@ -4,18 +4,18 @@ members = ["bootloader", "firmware", "shared"]
 resolver = "2"
 
 [patch.crates-io]
-embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-executor = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-futures = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-nrf = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-sync = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-time = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-time-driver = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-time-queue-driver = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-usb = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-boot = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
-embassy-boot-nrf = { git = "https://github.com/embassy-rs/embassy", rev = "650f97924ab540d3232b187cbde73d7a0104f734" }
+embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy" }
+embassy-nrf = { git = "https://github.com/embassy-rs/embassy" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time-queue-driver = { git = "https://github.com/embassy-rs/embassy" }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy" }
+embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy" }
+embassy-boot = { git = "https://github.com/embassy-rs/embassy" }
+embassy-boot-nrf = { git = "https://github.com/embassy-rs/embassy" }
 nrf-softdevice-mbr = { git = "https://github.com/embassy-rs/nrf-softdevice" }
 # [patch."https://github.com/embassy-rs/ekv"]
 # ekv = { git = "https://github.com/simmsb/ekv" }
@@ -25,8 +25,7 @@ codegen-units = 1
 debug = 2
 debug-assertions = true # <-
 incremental = false
-lto = 'fat'
-opt-level = 3         # <-
+opt-level = 'z'         # <-
 overflow-checks = true  # <-
 
 [profile.release]
@@ -43,3 +42,4 @@ panic = 'abort'
 [profile.debug-trace]
 inherits = "dev"
 opt-level = 3         # <-
+lto = 'fat'
