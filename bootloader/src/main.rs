@@ -28,7 +28,7 @@ fn main() -> ! {
     defmt::info!("Bootloader starting");
 
     let mut wdt_config = wdt::Config::default();
-    wdt_config.timeout_ticks = 32768 * 60; 
+    wdt_config.timeout_ticks = 32768 * 60;
     wdt_config.action_during_sleep = SleepConfig::RUN;
     wdt_config.action_during_debug_halt = HaltConfig::PAUSE;
 
@@ -54,7 +54,7 @@ fn main() -> ! {
     unsafe { bl.load(active_offset) }
 }
 
-pub fn create_flash_config<'a, 'b, 'c>(
+pub fn create_flash_config<'a, 'b>(
     internal: &'a Mutex<NoopRawMutex, RefCell<WatchdogFlash<Nvmc<'b>>>>,
 ) -> BootLoaderConfig<
     BlockingPartition<'a, NoopRawMutex, WatchdogFlash<Nvmc<'b>>>,
@@ -112,5 +112,7 @@ unsafe fn DefaultHandler(_: i16) -> ! {
 #[cfg(not(feature = "panic-probe"))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop { cortex_m::asm::nop(); }
+    loop {
+        cortex_m::asm::nop();
+    }
 }

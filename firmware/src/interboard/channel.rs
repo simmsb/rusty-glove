@@ -35,6 +35,6 @@ impl<T> PartialEq for PrioritisedMessage<T> {
 
 impl<T> PartialOrd for PrioritisedMessage<T> {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        self.priority.partial_cmp(&other.priority)
+        Some(self.priority.cmp(&other.priority))
     }
 }

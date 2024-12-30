@@ -28,13 +28,13 @@ macro_rules! define_pin_lr {
     ($name:ident, $pl:ident, $pr:ident) => {
         #[allow(unused)]
         macro_rules! $name {
-                                                    () => {
-                                                        #[cfg(feature = "side_left")]
-                                                        ::embassy_nrf::peripherals::$pl
-                                                        #[cfg(feature = "side_right")]
-                                                        ::embassy_nrf::peripherals::$pr
-                                                    };
-                                                }
+                                                            () => {
+                                                                #[cfg(feature = "side_left")]
+                                                                ::embassy_nrf::peripherals::$pl
+                                                                #[cfg(feature = "side_right")]
+                                                                ::embassy_nrf::peripherals::$pr
+                                                            };
+                                                        }
 
         ::paste::paste! {
             #[allow(unused)]

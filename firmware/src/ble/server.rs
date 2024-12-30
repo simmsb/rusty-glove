@@ -31,7 +31,7 @@ pub struct GloveServer {
 
 impl GloveServer {
     pub fn new(sd: &mut Softdevice) -> Self {
-        let pnp = crate::side::is_master().then(|| &PnPID {
+        let pnp = crate::side::is_master().then_some(&PnPID {
             vid_source: super::device_info::VidSource::BluetoothSIG,
             vendor_id: 0x8192,
             product_id: 0x4096,

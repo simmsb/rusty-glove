@@ -162,9 +162,7 @@ impl Animation for Snow {
         out
     }
 
-    fn construct_sync(&self) -> Self::SyncMessage {
-        ()
-    }
+    fn construct_sync(&self) -> Self::SyncMessage {}
 
     fn sync(&mut self, _sync: Self::SyncMessage) {}
 

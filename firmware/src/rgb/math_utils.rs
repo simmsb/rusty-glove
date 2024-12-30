@@ -3,10 +3,25 @@
 use cichlid::ColorRGB;
 use fixed_macro::fixed;
 
-use fixed::types::{I12F4, I16F16, I4F12, U0F16, U16F16};
+use fixed::types::{I16F16, I4F12, U0F16, U16F16};
+use palette::{convert::FromColorUnclamped, LinSrgb, Mix, Okhsv, OklabHue};
 use rand::Rng;
 
 use crate::rng::MyRng;
+
+pub(crate) fn blend(a: ColorRGB, b: ColorRGB, between: u8) -> ColorRGB {
+    let a = palette::Oklab::from_color_unclamped(LinSrgb::<f32>::from(LinSrgb::new(a.r, a.g, a.b)));
+    let b = palette::Oklab::from_color_unclamped(LinSrgb::<f32>::from(LinSrgb::new(b.r, b.g, b.b)));
+
+    let c = a.mix(b, between as f32 / 256.0);
+    let c: LinSrgb<u8> = LinSrgb::from_color_unclamped(c).into();
+
+    ColorRGB {
+        r: c.red,
+        g: c.green,
+        b: c.blue,
+    }
+}
 
 pub(crate) fn wrapping_delta(a: I16F16, b: I16F16, min: I16F16, max: I16F16) -> I16F16 {
     let half_range = (max - min) / fixed!(2: I16F16);
@@ -47,19 +62,19 @@ pub(crate) fn rand_rainbow() -> ColorRGB {
 pub(crate) fn rainbow(x: I4F12) -> ColorRGB {
     let x = fixed!(0.5: I4F12) - x;
 
-    let r = cordic::sin(I4F12::PI * x);
-    let g = cordic::sin(I4F12::PI * (x + fixed!(0.333333: I4F12)));
-    let b = cordic::sin(I4F12::PI * (x + fixed!(0.666666: I4F12)));
+    let c = Okhsv::new(
+        OklabHue::from_radians((I4F12::PI * x).to_num::<f32>()),
+        1.0,
+        1.0,
+    );
 
-    let r = (r * r).saturating_lerp(I12F4::ZERO, fixed!(255: I12F4));
-    let g = (g * g).saturating_lerp(I12F4::ZERO, fixed!(255: I12F4));
-    let b = (b * b).saturating_lerp(I12F4::ZERO, fixed!(255: I12F4));
+    let c: LinSrgb<u8> = LinSrgb::from_color_unclamped(c).into();
 
-    let r: u8 = r.int().saturating_to_num();
-    let g: u8 = g.int().saturating_to_num();
-    let b: u8 = b.int().saturating_to_num();
-
-    ColorRGB { r, g, b }
+    ColorRGB {
+        r: c.red,
+        g: c.green,
+        b: c.blue,
+    }
 }
 
 pub(crate) fn ease_fade(pct: U0F16) -> u8 {

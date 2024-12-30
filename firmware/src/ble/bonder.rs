@@ -22,10 +22,10 @@ macro_rules! mkfrom {
             }
         }
 
-        impl Into<$a> for $b {
-            fn into(self) -> $a {
-                $a {
-                    $( $f: mkfrom!(@conv, self, $f, $($i)?), )*
+        impl From<$b> for $a {
+            fn from(b: $b) -> Self {
+                Self {
+                    $( $f: mkfrom!(@conv, b, $f, $($i)?), )*
                 }
             }
         }
@@ -248,7 +248,7 @@ impl SecurityHandler for Bonder {
             let bonds = bonds.borrow();
             let info = bonds.get(&conn.peer_address().into())?;
 
-            Some((info.master_id.clone(), info.encryption.clone()))
+            Some((info.master_id, info.encryption.clone()))
         }) else {
             let data = self.data.lock(|bonds| bonds.borrow().clone());
 

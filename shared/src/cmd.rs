@@ -1,7 +1,4 @@
-use core::{
-    hash::{Hash, Hasher},
-    u8,
-};
+use core::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 

@@ -14,9 +14,7 @@ impl Chord {
     fn process(&mut self, event: keyberon::layout::Event) -> Option<bool> {
         let coord = event.coord();
         let coord = [coord.0, coord.1];
-        let Some(&state_idx) = self.key_map.get(&coord) else {
-            return None;
-        };
+        let &state_idx = self.key_map.get(&coord)?;
 
         self.key_states[state_idx] = event.is_press();
 

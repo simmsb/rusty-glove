@@ -10,7 +10,8 @@ use fixed_macro::fixed;
 use keyberon::layout::Event;
 
 use crate::{
-    interboard, keys::AUX_MATRIX_EVENTS, messages::device_to_device::DeviceToDevice, side::get_side, utils::Ticker
+    interboard, keys::AUX_MATRIX_EVENTS, messages::device_to_device::DeviceToDevice,
+    side::get_side, utils::Ticker,
 };
 
 use super::{
@@ -18,7 +19,7 @@ use super::{
     animations,
     driver::Ws2812,
     layout::{self, Light, NUM_LEDS},
-    math_utils::ease_fade,
+    math_utils::{blend, ease_fade},
     RGB_CMD_CHANNEL,
 };
 
@@ -194,11 +195,11 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
                         let sparkles = KEY_SPARKLES.lock().await;
                         let corrected_colours =
                             array::from_fn::<_, { NUM_LEDS as usize }, _>(|i| {
-                                let mut a = current.colours[i];
+                                let a = current.colours[i];
                                 let b = next.colours[i];
-                                a.blend(b, ease_fade_on_time(fade_start.elapsed()));
-                                let c = maybe_sparkle(sparkles[i], a);
-                                errors[i].process(c)
+                                let c = blend(a, b, ease_fade_on_time(fade_start.elapsed()));
+                                let d = maybe_sparkle(sparkles[i], c);
+                                errors[i].process(d)
                             });
 
                         drop(sparkles);
@@ -232,12 +233,12 @@ pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
 const SPARKLE_COLOUR: ColorRGB = ColorRGB::White;
 
 fn maybe_sparkle(sparkle: Option<NonZeroU8>, base: ColorRGB) -> ColorRGB {
-    let Some(sparkle) = sparkle else { return base; };
+    let Some(sparkle) = sparkle else {
+        return base;
+    };
 
-    let mut c = SPARKLE_COLOUR;
-    c.blend(base, ease_fade_on_u8(sparkle.get()));
-
-    c
+    let c = SPARKLE_COLOUR;
+    blend(c, base, ease_fade_on_u8(sparkle.get()))
 }
 
 static KEY_SPARKLES: embassy_sync::mutex::Mutex<
@@ -258,7 +259,9 @@ pub async fn apply_keypresses() {
     loop {
         let evt = sub.next_message_pure().await;
 
-        let Event::Press(x, y) = evt else { continue; };
+        let Event::Press(x, y) = evt else {
+            continue;
+        };
 
         let idx = lights.inverse_index[x as usize][y as usize];
 
@@ -275,13 +278,10 @@ pub async fn sparkle_ticker() {
 
         let mut l = KEY_SPARKLES.lock().await;
         for sparkle in l.iter_mut() {
-            *sparkle = sparkle.and_then(|n| {
-                n.checked_add(1)
-            });
+            *sparkle = sparkle.and_then(|n| n.checked_add(1));
         }
         drop(l);
     }
-
 }
 
 #[derive(Default, Clone, Copy)]

@@ -234,7 +234,7 @@ async fn handle_connection(
     let gatt = async {
         let exit_reason = gatt_server::run(&conn, &server, |e| match e {
             crate::ble::server::GloveServerEvent::DFU(e) => {
-                if let Err(_) = msg_chan.try_send(e) {
+                if msg_chan.try_send(e).is_err() {
                     crate::log::error!(
                         "Missed a DFU packet while transferring it to async land... oops"
                     );

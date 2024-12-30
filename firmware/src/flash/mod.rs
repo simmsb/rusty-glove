@@ -65,7 +65,7 @@ pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
     crate::log::info!("Initialising flash and database");
     let mut db = init_inner(flash, false).await;
 
-    if let None = async {
+    if async {
         const PROBE_KEY: &[u8] = b"type-id-probe";
         let tx = db.read_transaction().await;
 
@@ -78,7 +78,7 @@ pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
         let mut v = [0u8; core::mem::size_of::<TypeId>()];
         match tx.read(PROBE_KEY, &mut v).await {
             Ok(len) => {
-                if &expected != &v[..len] {
+                if expected != v[..len] {
                     crate::log::warn!(
                         "Type id probe failed, expecting: {}, got: {}",
                         expected,
@@ -103,6 +103,7 @@ pub async fn init(flash: &'static Mutex<ThreadModeRawMutex, MkSend<Flash>>) {
         Some(())
     }
     .await
+    .is_none()
     {
         crate::log::warn!("Storage was full, issuing a format!");
         core::mem::drop(db);

@@ -1,6 +1,5 @@
 use core::num::Wrapping;
 
-use cichlid::ColorRGB;
 use embassy_time::Duration;
 use fixed::types::{I16F16, U0F16, U16F16};
 use fixed_macro::fixed;
@@ -9,7 +8,7 @@ use rand::Rng;
 use crate::{
     rgb::{
         animation::Animation,
-        math_utils::{rainbow, rand_decimal, rand_rainbow},
+        math_utils::{blend, rainbow, rand_decimal, rand_rainbow},
     },
     rng::MyRng,
 };
@@ -49,6 +48,7 @@ impl Default for Perlin {
         } else if MyRng.gen_bool(0.4) {
             let a = rand_decimal();
             let b = a.wrapping_add(fixed!(0.5: I4F12));
+
             ColourMode::Double(rainbow(a).into(), rainbow(b).into())
         } else {
             ColourMode::Single(rand_rainbow().into())
@@ -95,9 +95,7 @@ impl Animation for Perlin {
                     (I16F16::from_num(light.location.1) + dy * 50) * fixed!(0.01: I16F16),
                 );
                 let mix = (fixed!(255: U16F16) * mix).int().saturating_to_num::<i16>();
-                let mut c: ColorRGB = a.into();
-                c.blend(b.into(), mix as u8);
-                c
+                blend(a.into(), b.into(), mix as u8)
             }
             ColourMode::Random => {
                 let hue = self.noise.get_noise(

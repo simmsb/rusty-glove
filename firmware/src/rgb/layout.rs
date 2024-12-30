@@ -24,10 +24,7 @@ impl UnindexedLight {
         assert!((position.0 as usize) < MAX_LED_XPOS);
         assert!((position.1 as usize) < MAX_LED_YPOS);
 
-        Self {
-            location,
-            position,
-        }
+        Self { location, position }
     }
 }
 
