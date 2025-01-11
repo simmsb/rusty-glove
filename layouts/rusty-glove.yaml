@@ -9,8 +9,8 @@ layers:
     - tap: ws5
     - tap: ws6
     - tap: ws7
-    - {}
-    - {}
+    - tap: ws8
+    - tap: ws8
     - {}
   - - tap: '= '
     - tap: '1 '

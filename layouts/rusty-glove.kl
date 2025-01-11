@@ -74,13 +74,23 @@ key ws7 {
   out keymap_drawer: "ws7";
 }
 
+key ws8 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb8].as_slice())";
+  out keymap_drawer: "ws8";
+}
+
+key ws9 {
+  out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LCtrl, ::keyberon::key_code::KeyCode::Kb9].as_slice())";
+  out keymap_drawer: "ws8";
+}
+
 key opt_enter {
   out keyberon: "::keyberon::action::Action::MultipleKeyCodes(&[::keyberon::key_code::KeyCode::LAlt, ::keyberon::key_code::KeyCode::Space].as_slice())";
   out keymap_drawer: "opt-enter";
 }
 
 layer base {
-  ws1     ws2       ws3         ws4          ws5                              ws6           ws7               n            n      n;
+  ws1     ws2       ws3         ws4          ws5                              ws6           ws7               ws8          ws9    n;
   '='     '1'       '2'         '3'          '4'        '5'    '6'            '7'           '8'               '9'          '0'    '\';
   tab     'q' >esc< 'w'   >esc< 'e'          'r'        't'    'y'   >bspace< 'u'     >del< 'i'         >'/'< 'o'    >'\'< 'p'    ''';
   lshift  'a'       's'         'd'          'f'        'g'    'h'   >'<'<    'j'     >':'< 'k'         >'>'< 'l'          ';'    rshift;
