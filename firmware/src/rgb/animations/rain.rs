@@ -10,7 +10,7 @@ use rand::{rngs::SmallRng, Rng, SeedableRng};
 use crate::{
     rgb::{
         animation::Animation,
-        math_utils::{ease_fade, rand_rainbow, wrapping_delta_u},
+        math_utils::{ease_fade, overlay, rand_rainbow, wrapping_delta_u},
     },
     rng::{splitmix64, MyRng},
 };
@@ -136,9 +136,7 @@ impl Animation for Rain {
             let mut colour = splash.colour;
             colour.scale(level);
 
-            out.r = out.r.saturating_add(colour.r);
-            out.g = out.g.saturating_add(colour.g);
-            out.b = out.b.saturating_add(colour.b);
+            out = overlay(out, colour);
         }
 
         out

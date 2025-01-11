@@ -12,7 +12,7 @@ use crate::{
         self,
         animation::Animation,
         layout::NUM_COLS,
-        math_utils::{ease_fade, rand_rainbow, wrapping_delta_u},
+        math_utils::{overlay, rand_rainbow, wrapping_delta_u},
     },
     rng::{splitmix64, MyRng},
     side::get_side,
@@ -144,19 +144,20 @@ impl Animation for Snow {
             // let distance = dx / fixed!(20.0: I16F16);
             let distance = dx / fixed!(10.0: I16F16) + dy / fixed!(40.0: I16F16);
 
-            let level = ease_fade(
-                fixed!(1.0: I16F16)
-                    .saturating_sub(distance)
-                    .saturating_to_num::<U0F16>()
-                    .clamp(U0F16::ZERO, U0F16::MAX),
-            );
+            let level = fixed!(1.0: I16F16)
+                .saturating_sub(distance)
+                .saturating_to_num::<U0F16>()
+                .clamp(U0F16::ZERO, U0F16::MAX)
+                .saturating_sqrt()
+                .to_num::<I16F16>()
+                .lerp(fixed!(0: I16F16), fixed!(255: I16F16))
+                .int()
+                .saturating_to_num();
 
             let mut colour = flake.colour;
             colour.scale(level);
 
-            out.r = out.r.saturating_add(colour.r);
-            out.g = out.g.saturating_add(colour.g);
-            out.b = out.b.saturating_add(colour.b);
+            out = overlay(out, colour);
         }
 
         out

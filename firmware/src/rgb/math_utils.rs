@@ -3,8 +3,8 @@
 use cichlid::ColorRGB;
 use fixed_macro::fixed;
 
-use fixed::types::{I16F16, I4F12, U0F16, U16F16};
-use palette::{convert::FromColorUnclamped, LinSrgb, Mix, Okhsv, OklabHue};
+use fixed::types::{I16F16, U0F16, U16F16};
+use palette::{blend::Blend, convert::FromColorUnclamped, LinSrgb, Mix, Okhsv, OklabHue};
 use rand::Rng;
 
 use crate::rng::MyRng;
@@ -14,6 +14,20 @@ pub(crate) fn blend(a: ColorRGB, b: ColorRGB, between: u8) -> ColorRGB {
     let b = palette::Oklab::from_color_unclamped(LinSrgb::<f32>::from(LinSrgb::new(b.r, b.g, b.b)));
 
     let c = a.mix(b, between as f32 / 256.0);
+    let c: LinSrgb<u8> = LinSrgb::from_color_unclamped(c).into();
+
+    ColorRGB {
+        r: c.red,
+        g: c.green,
+        b: c.blue,
+    }
+}
+
+pub(crate) fn overlay(a: ColorRGB, b: ColorRGB) -> ColorRGB {
+    let a = LinSrgb::<f32>::from(LinSrgb::new(a.r, a.g, a.b));
+    let b = LinSrgb::<f32>::from(LinSrgb::new(b.r, b.g, b.b));
+
+    let c = a.screen(b);
     let c: LinSrgb<u8> = LinSrgb::from_color_unclamped(c).into();
 
     ColorRGB {
@@ -51,19 +65,17 @@ pub(crate) fn sqr(x: I16F16) -> I16F16 {
     x * x
 }
 
-pub(crate) fn rand_decimal() -> I4F12 {
-    I4F12::from_bits(MyRng.gen()).frac()
+pub(crate) fn rand_decimal() -> f32 {
+    MyRng.gen()
 }
 
 pub(crate) fn rand_rainbow() -> ColorRGB {
     rainbow(rand_decimal())
 }
 
-pub(crate) fn rainbow(x: I4F12) -> ColorRGB {
-    let x = fixed!(0.5: I4F12) - x;
-
+pub(crate) fn rainbow(x: f32) -> ColorRGB {
     let c = Okhsv::new(
-        OklabHue::from_radians((I4F12::PI * x).to_num::<f32>()),
+        OklabHue::from_degrees((x - 0.5) * 360.0),
         1.0,
         1.0,
     );

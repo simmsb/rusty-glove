@@ -109,6 +109,9 @@
           native-toolchain = (fenix.packages.${system}.complete.withComponents [
             "cargo"
             "clippy"
+            "llvm-tools-preview"
+            "rust-analyzer"
+            "rustfmt"
             # "rust-src"
             # "rustc"
             # "rustfmt"

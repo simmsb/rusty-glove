@@ -47,7 +47,7 @@ impl Default for Perlin {
             ColourMode::Random
         } else if MyRng.gen_bool(0.4) {
             let a = rand_decimal();
-            let b = a.wrapping_add(fixed!(0.5: I4F12));
+            let b = (a + 0.5) % 1.0;
 
             ColourMode::Double(rainbow(a).into(), rainbow(b).into())
         } else {
