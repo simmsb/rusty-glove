@@ -23,7 +23,7 @@
     uf2.flake = false;
 
     keymap-drawer = {
-      url = "github:caksoylar/keymap-drawer";
+      url = "github:caksoylar/keymap-drawer/a2a3b37c54ddb449428b4597b39c3c28b331a7da";
       flake = false;
     };
     poetry2nix = {
@@ -52,6 +52,7 @@
           poetry2nix = inputs.poetry2nix.lib.mkPoetry2Nix { inherit pkgs; };
 
           keymap-drawer = poetry2nix.mkPoetryApplication {
+            name = "keymap-drawer";
             projectDir = inputs.keymap-drawer;
             preferWheels = true;
             meta = {
@@ -103,7 +104,7 @@
           '';
           arm-toolchain-plain = fenix.packages.${system}.fromToolchainFile {
             file = ./rust-toolchain.toml;
-            sha256 = "sha256-dbdRPCQQnuQ66Ie8CmgGutRLK61weyYlAhcERrz2koE=";
+            sha256 = "sha256-7m3k8755ugSBaNOk1dvdVBFJ3zMsNln24GDlD7lHolk=";
           };
           native-toolchain = (fenix.packages.${system}.complete.withComponents [
             "cargo"

@@ -3,3 +3,6 @@
 /.direnv
 /.DS_Store
 **/*.uf2
+/.vscode
+boot.hex
+boot.elf

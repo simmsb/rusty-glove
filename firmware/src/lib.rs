@@ -8,9 +8,8 @@
     trait_alias,
     maybe_uninit_uninit_array,
     maybe_uninit_array_assume_init,
-    const_maybe_uninit_write,
     const_for,
-    async_closure,
+    async_trait_bounds,
     array_chunks
 )]
 
