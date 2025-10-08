@@ -1,11 +1,12 @@
 use embassy_executor::Spawner;
 use embassy_nrf::{gpio::AnyPin, peripherals::PWM0};
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer, WithTimeout};
 
 use crate::{
     interboard::{self, THIS_SIDE_MESSAGE_BUS},
     messages::device_to_device::DeviceToDevice,
+    metrics::METRIC_UPDATES,
     side,
 };
 
@@ -49,16 +50,59 @@ async fn command_listener() {
     }
 }
 
+async fn wait_until_no_messages<X>(
+    x: &mut X,
+    f: impl async Fn(&mut X),
+    timeout: Duration,
+) {
+    loop {
+        match f(x).with_timeout(timeout).await {
+            Ok(_) => (),
+            Err(_) => break,
+        }
+    }
+}
+
 #[embassy_executor::task]
 async fn animation_randomizer() {
-    loop {
-        Timer::after(Duration::from_secs(60 * 5)).await;
+    let mut sub = METRIC_UPDATES.subscriber().unwrap();
 
+    Timer::after(Duration::from_secs(60 * 5)).await;
+
+    let inner = async || loop {
         let anim = DynAnimation::random();
         let sync = anim.construct_sync();
 
         send_cmd(Command::SetNextAnimation(sync.clone())).await;
         interboard::send_msg(DeviceToDevice::SetAnimation(sync), 3).await;
+
+        Timer::after(Duration::from_secs(60 * 5)).await;
+    };
+
+    loop {
+        match embassy_futures::select::select(
+            wait_until_no_messages(
+                &mut sub,
+                async |sub: &mut embassy_sync::pubsub::Subscriber<'static, ThreadModeRawMutex, _, 1, 4, 1>| {
+                    sub.next_message_pure().await;
+                },
+                Duration::from_secs(60 * 5),
+            ),
+            inner(),
+        )
+        .await
+        {
+            embassy_futures::select::Either::First(_) => {
+                let anim = DynAnimation::Null(animations::null::Null);
+                let sync = anim.construct_sync();
+
+                send_cmd(Command::SetNextAnimation(sync.clone())).await;
+                interboard::send_msg(DeviceToDevice::SetAnimation(sync), 3).await;
+
+                sub.next_message_pure().await;
+            }
+            embassy_futures::select::Either::Second(_) => {}
+        }
     }
 }
 
