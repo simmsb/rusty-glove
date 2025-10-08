@@ -74,11 +74,7 @@ pub(crate) fn rand_rainbow() -> ColorRGB {
 }
 
 pub(crate) fn rainbow(x: f32) -> ColorRGB {
-    let c = Okhsv::new(
-        OklabHue::from_degrees((x - 0.5) * 360.0),
-        1.0,
-        1.0,
-    );
+    let c = Okhsv::new(OklabHue::from_degrees((x - 0.5) * 360.0), 1.0, 1.0);
 
     let c: LinSrgb<u8> = LinSrgb::from_color_unclamped(c).into();
 

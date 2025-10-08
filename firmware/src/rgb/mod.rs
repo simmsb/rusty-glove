@@ -50,11 +50,7 @@ async fn command_listener() {
     }
 }
 
-async fn wait_until_no_messages<X>(
-    x: &mut X,
-    f: impl async Fn(&mut X),
-    timeout: Duration,
-) {
+async fn wait_until_no_messages<X>(x: &mut X, f: impl async Fn(&mut X), timeout: Duration) {
     loop {
         match f(x).with_timeout(timeout).await {
             Ok(_) => (),
@@ -83,7 +79,14 @@ async fn animation_randomizer() {
         match embassy_futures::select::select(
             wait_until_no_messages(
                 &mut sub,
-                async |sub: &mut embassy_sync::pubsub::Subscriber<'static, ThreadModeRawMutex, _, 1, 4, 1>| {
+                async |sub: &mut embassy_sync::pubsub::Subscriber<
+                    'static,
+                    ThreadModeRawMutex,
+                    _,
+                    1,
+                    4,
+                    1,
+                >| {
                     sub.next_message_pure().await;
                 },
                 Duration::from_secs(60 * 5),
