@@ -1,5 +1,3 @@
-#![feature(concat_bytes)]
-
 use chrono::Local;
 use std::env;
 use std::fs::File;

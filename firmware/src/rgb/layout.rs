@@ -34,7 +34,8 @@ pub struct Lights {
 }
 
 const fn index_lights(lights: [UnindexedLight; NUM_LEDS as usize]) -> Lights {
-    let mut out: [MaybeUninit<Light>; NUM_LEDS as usize] = MaybeUninit::uninit_array();
+    let mut out: [MaybeUninit<Light>; NUM_LEDS as usize] =
+        [const { MaybeUninit::uninit() }; NUM_LEDS as usize];
     let mut inverse_index: [[u16; MAX_LED_YPOS]; MAX_LED_XPOS] = [[0; MAX_LED_YPOS]; MAX_LED_XPOS];
 
     let mut i = 0;

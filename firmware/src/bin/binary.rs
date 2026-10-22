@@ -1,6 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait, impl_trait_in_assoc_type)]
+#![feature(impl_trait_in_assoc_type)]
 
 #[cfg(feature = "probe")]
 use defmt_rtt as _;

@@ -1,16 +1,11 @@
 #![no_std]
 #![allow(incomplete_features, async_fn_in_trait)]
 #![feature(
-    ptr_sub_ptr,
-    const_ptr_sub_ptr,
     type_alias_impl_trait,
     impl_trait_in_assoc_type,
     trait_alias,
-    maybe_uninit_uninit_array,
     maybe_uninit_array_assume_init,
-    const_for,
-    async_trait_bounds,
-    array_chunks
+    async_trait_bounds
 )]
 
 use ble::dfu::DfuConfig;

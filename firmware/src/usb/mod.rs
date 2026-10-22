@@ -25,6 +25,7 @@ mod usb_driver {
 
     pub type USBDriver = impl embassy_usb::driver::Driver<'static>;
 
+    #[define_opaque(USBDriver)]
     pub fn set_guesser(driver: Driver<'static, USBD, &'static SoftwareVbusDetect>) -> USBDriver {
         let guesser = embassy_os_guess::OSGuesser::new(|guess| {
             let _ = GUESSED_OS.set(guess);
