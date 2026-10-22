@@ -5,32 +5,29 @@ version = "0.1.0"
 resolver = "2"
 
 [dependencies]
-cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
-cortex-m-rt = "0.7.5"
+cortex-m = { version = "0.7.9", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt = "0.7.7"
 
-defmt = "0.3"
-defmt-rtt = "0.4"
-embassy-boot = { version = "0.3", default-features = false }
-embassy-boot-nrf = { version = "0.3", default-features = false, features = ["softdevice"] }
-embassy-embedded-hal = { version = "0.2.0" }
-embassy-futures = { version = "0.1.1" }
-embassy-nrf = { version = "0.2.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
-embassy-sync = { version = "0.6.1", features = [] }
-embassy-executor = { version = "0.6.3", features = [
+defmt = "1.2"
+defmt-rtt = "1.3"
+embassy-boot = { version = "0.7", default-features = false }
+embassy-boot-nrf = { version = "0.12", default-features = false, features = ["softdevice"] }
+embassy-embedded-hal = { version = "0.6.0" }
+embassy-futures = { version = "0.1.2" }
+embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "unstable-pac", "time"] }
+embassy-sync = { version = "0.8.0", features = [] }
+embassy-executor = { version = "0.10.0", features = [
   "nightly",
-  "arch-cortex-m",
+  "platform-cortex-m",
   "executor-thread",
-  "integrated-timers",
-  "nightly",
 ] }
 embedded-hal = "1.0"
-embedded-io = "0.6"
-embedded-storage = "0.3.1"
-embedded-storage-async = "0.4.1"
+embedded-io = "0.7"
+embedded-storage = "0.3.2"
+embedded-storage-async = "0.4.2"
 nrf-softdevice-mbr = { git = "https://github.com/embassy-rs/nrf-softdevice" }
-panic-probe = { version = "0.3", features = ["print-defmt"], optional = true }
+panic-probe = { version = "1.0", features = ["print-defmt"], optional = true }
 
-static_cell = "2.1"
 
 [features]
 logging = ["embassy-boot/defmt", "embassy-boot-nrf/defmt"]
