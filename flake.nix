@@ -116,18 +116,8 @@
             # "rustc"
             # "rustfmt"
           ]);
-          arm-toolchain = pkgs.runCommand "turbowaker-rust" { } ''
-            echo "test $out ${arm-toolchain-plain}"
-            cp -RL ${arm-toolchain-plain} $out
-            chmod -R +rwx $out
 
-            echo "doing patch"
-
-            patch $out/lib/rustlib/src/rust/library/core/Cargo.toml ${./turbowaker/Cargo.toml.patch}
-            patch $out/lib/rustlib/src/rust/library/core/src/task/wake.rs ${./turbowaker/wake.rs.patch}
-          '';
-
-          toolchain = fenix.packages.${system}.combine [ arm-toolchain native-toolchain ];
+          toolchain = fenix.packages.${system}.combine [ arm-toolchain-plain native-toolchain ];
           craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
 
           src = craneLib.cleanCargoSource ./.;
@@ -152,7 +142,7 @@
               ];
             };
 
-            cargoExtraArgs = "-Z build-std=core,panic_abort,alloc -Z build-std-features=optimize_for_size,panic_immediate_abort,core/turbowakers --target ${target} ${args}";
+            cargoExtraArgs = "-Z build-std=core,panic_abort,alloc -Z build-std-features=optimize_for_size,panic_immediate_abort --target ${target} ${args}";
             CARGO_PROFILE = profile;
             DEFMT_LOG = defmt;
             pname = "rusty-glove";

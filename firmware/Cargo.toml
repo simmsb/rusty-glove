@@ -142,7 +142,6 @@ probe = [
   "embassy-os-guess/defmt",
   "ekv/defmt"
 ]
-turbowakers = ["embassy-sync/turbowakers", "embassy-executor/turbowakers"]
 
 side_left = []
 side_right = []
@@ -150,7 +149,7 @@ side_right = []
 control_own_led_effects = []
 
 default_unselected_side = ["probe", "default_no_probe"]
-default_no_probe = ["turbowakers"]
+default_no_probe = []
 default = ["default_unselected_side", "side_right"]
 
 reboot_on_panic = []

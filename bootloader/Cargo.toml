@@ -33,7 +33,6 @@ panic-probe = { version = "0.3", features = ["print-defmt"], optional = true }
 static_cell = "2.1"
 
 [features]
-turbowakers = ["embassy-sync/turbowakers", "embassy-executor/turbowakers"]
 logging = ["embassy-boot/defmt", "embassy-boot-nrf/defmt"]
 
-default = ["turbowakers", "logging"]
+default = ["logging"]
