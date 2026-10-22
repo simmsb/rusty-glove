@@ -2,7 +2,7 @@ use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_sync::pipe::{Pipe, Reader, Writer};
 use embassy_sync::pubsub::PubSubChannel;
-use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
+use embassy_usb::class::cdc_acm::device::{CdcAcmClass, Receiver, Sender, State};
 use embassy_usb::driver::Driver;
 use embassy_usb::Builder;
 use shared::device_to_host::DeviceToHost;
@@ -69,9 +69,9 @@ pub fn init(spawner: &Spawner, builder: &mut Builder<'static, USBDriver>) {
     let (from_usb_rx, from_usb_tx) = from_usb_pipe.split();
     let (to_usb_rx, to_usb_tx) = to_usb_pipe.split();
 
-    spawner.must_spawn(serial_in_task(from_usb_tx, serial_rx));
-    spawner.must_spawn(serial_out_task(to_usb_rx, serial_tx));
-    spawner.must_spawn(eventer_task(to_usb_tx, from_usb_rx));
+    spawner.spawn(serial_in_task(from_usb_tx, serial_rx).unwrap());
+    spawner.spawn(serial_out_task(to_usb_rx, serial_tx).unwrap());
+    spawner.spawn(eventer_task(to_usb_tx, from_usb_rx).unwrap());
 }
 
 pub fn make_state<'d, D>(

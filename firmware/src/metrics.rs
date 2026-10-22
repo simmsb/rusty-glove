@@ -35,8 +35,8 @@ pub async fn init(spawner: &Spawner) {
         push_update(m);
     }
 
-    spawner.must_spawn(metrics_syncer());
-    spawner.must_spawn(key_counter());
+    spawner.spawn(metrics_syncer().unwrap());
+    spawner.spawn(key_counter().unwrap());
 }
 
 fn push_update(m: Metrics) {

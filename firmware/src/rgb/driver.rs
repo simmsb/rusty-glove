@@ -6,7 +6,7 @@ use embassy_nrf::{
         Config, Instance, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
         SingleSequencer,
     },
-    Peripheral,
+    Peri,
 };
 use embassy_time::Timer;
 
@@ -112,8 +112,8 @@ use embassy_time::Timer;
 //     }
 // }
 
-pub struct Ws2812<P: Instance, const N: usize> {
-    pwm: SequencePwm<'static, P>,
+pub struct Ws2812<const N: usize> {
+    pwm: SequencePwm<'static>,
 }
 
 const T1H: u16 = 0x8000 | 13; // Duty = 13/20 ticks (0.8us/1.25us) for a 1
@@ -155,8 +155,8 @@ struct Seq<const N: usize> {
 unsafe impl<const N: usize> Pod for Seq<N> {}
 unsafe impl<const N: usize> Zeroable for Seq<N> {}
 
-impl<P: Instance, const N: usize> Ws2812<P, N> {
-    pub fn new<Pin: Peripheral<P = impl GpioPin> + 'static>(pwm: P, pin: Pin) -> Self {
+impl<const N: usize> Ws2812<N> {
+    pub fn new(pwm: Peri<'static, impl Instance>, pin: Peri<'static, impl GpioPin>) -> Self {
         let mut config = Config::default();
         config.ch0_drive = OutputDrive::HighDrive;
         config.sequence_load = SequenceLoad::Common;

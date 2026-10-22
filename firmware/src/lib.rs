@@ -12,7 +12,7 @@ use ble::dfu::DfuConfig;
 use embassy_executor::Spawner;
 use embassy_nrf::{
     config::{HfclkSource, LfclkSource},
-    gpio::{Input, Level, Output, OutputDrive, Pin, Pull},
+    gpio::{Input, Level, Output, OutputDrive, Pull},
     interrupt::InterruptExt,
     usb::vbus_detect::SoftwareVbusDetect,
 };
@@ -36,8 +36,6 @@ pub mod ble;
 mod flash;
 pub mod interboard;
 pub mod keys;
-#[cfg(feature = "logging")]
-pub mod logger;
 pub mod messages;
 mod metrics;
 pub mod pins;
@@ -108,9 +106,10 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
 async fn watchdog_task() {
     log::debug!("Starting watchdog");
 
-    let mut handle = unsafe { embassy_nrf::wdt::WatchdogHandle::steal(0) };
+    let mut handle =
+        unsafe { embassy_nrf::wdt::WatchdogHandle::steal::<embassy_nrf::peripherals::WDT>(0) };
     loop {
-        handle.pet();
+        handle.feed();
         Timer::after_secs(4).await;
     }
 }
@@ -225,8 +224,8 @@ pub async fn main(spawner: Spawner) {
 
     ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
 
-    spawner.must_spawn(softdevice_task(sd));
-    spawner.must_spawn(watchdog_task());
+    spawner.spawn(softdevice_task(sd).unwrap());
+    spawner.spawn(watchdog_task().unwrap());
 
     set_status_led(Level::High);
 
@@ -242,14 +241,11 @@ pub async fn main(spawner: Spawner) {
 
     messages::init(&spawner);
 
-    #[cfg(feature = "logging")]
-    logger::init();
-
     rng::init(sd).await;
 
     flash::init(flash_mutex).await;
 
-    rgb::init(&spawner, p.PWM0, pins::take_leds!(p).degrade());
+    rgb::init(&spawner, p.PWM0, pins::take_leds!(p).into());
     // rgb::init(&spawner, p.I2S, pins::take_leds!(p).degrade(), I2SIrqs,
     //           p.P0_20.degrade(), p.P0_21.degrade(),
     //           p.P0_22.degrade()

@@ -1,6 +1,6 @@
 use cichlid::ColorRGB;
 use embassy_time::Duration;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 
 use crate::rng::MyRng;

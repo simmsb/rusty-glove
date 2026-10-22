@@ -1,10 +1,10 @@
-use core::{cell::RefCell, num::Wrapping};
+use core::{cell::RefCell, convert::Infallible, num::Wrapping};
 
 use embassy_sync::blocking_mutex::{raw::ThreadModeRawMutex, Mutex};
 use embassy_time::Instant;
 use nrf_softdevice::Softdevice;
 use once_cell::sync::OnceCell;
-use rand::{rngs::SmallRng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 static RNG: OnceCell<Mutex<ThreadModeRawMutex, RefCell<SmallRng>>> = OnceCell::new();
 
@@ -18,23 +18,20 @@ pub fn splitmix64(x: u64) -> u64 {
     z.0
 }
 
-impl rand::RngCore for MyRng {
-    fn next_u32(&mut self) -> u32 {
-        RNG.get().unwrap().lock(|r| r.borrow_mut().next_u32())
+impl rand::TryRng for MyRng {
+    type Error = Infallible;
+
+    fn try_next_u32(&mut self) -> Result<u32, Infallible> {
+        Ok(RNG.get().unwrap().lock(|r| r.borrow_mut().next_u32()))
     }
 
-    fn next_u64(&mut self) -> u64 {
-        RNG.get().unwrap().lock(|r| r.borrow_mut().next_u64())
+    fn try_next_u64(&mut self) -> Result<u64, Infallible> {
+        Ok(RNG.get().unwrap().lock(|r| r.borrow_mut().next_u64()))
     }
 
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        RNG.get().unwrap().lock(|r| r.borrow_mut().fill_bytes(dest))
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        RNG.get()
-            .unwrap()
-            .lock(|r| r.borrow_mut().try_fill_bytes(dest))
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Infallible> {
+        RNG.get().unwrap().lock(|r| r.borrow_mut().fill_bytes(dest));
+        Ok(())
     }
 }
 

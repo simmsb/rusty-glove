@@ -29,8 +29,8 @@ fn main() -> ! {
 
     let mut wdt_config = wdt::Config::default();
     wdt_config.timeout_ticks = 32768 * 60;
-    wdt_config.action_during_sleep = SleepConfig::RUN;
-    wdt_config.action_during_debug_halt = HaltConfig::PAUSE;
+    wdt_config.action_during_sleep = SleepConfig::Run;
+    wdt_config.action_during_debug_halt = HaltConfig::Pause;
 
     let internal_flash = WatchdogFlash::start(Nvmc::new(p.NVMC), p.WDT, wdt_config);
     let internal_flash = Mutex::new(RefCell::new(internal_flash));

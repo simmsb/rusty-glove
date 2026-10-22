@@ -187,11 +187,11 @@ async fn key_event_processor() {
 }
 
 pub fn init(spawner: &Spawner, scanner: ScannerInstance<'static>) {
-    spawner.must_spawn(matrix_processor());
-    spawner.must_spawn(matrix_scanner(scanner));
-    spawner.must_spawn(receive_events_from_other_side());
+    spawner.spawn(matrix_processor().unwrap());
+    spawner.spawn(matrix_scanner(scanner).unwrap());
+    spawner.spawn(receive_events_from_other_side().unwrap());
     if side::is_master() {
-        spawner.must_spawn(key_event_processor());
-        spawner.must_spawn(unicode::unicode_task());
+        spawner.spawn(key_event_processor().unwrap());
+        spawner.spawn(unicode::unicode_task().unwrap());
     }
 }

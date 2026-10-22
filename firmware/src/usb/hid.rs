@@ -1,6 +1,6 @@
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
-use embassy_usb::{class::hid::HidWriter, Builder};
+use embassy_usb::{class::hid::device::HidWriter, Builder};
 use packed_struct::PackedStruct;
 use usbd_human_interface_device::device::keyboard::{
     NKROBootKeyboardReport, NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR,
@@ -28,20 +28,22 @@ async fn keyboard_writer(mut keyboard_writer: HidWriter<'static, USBDriver, 64>)
 }
 pub fn init(spawner: &Spawner, builder: &mut Builder<'static, USBDriver>) {
     let keyboard_state = utils::singleton!(
-        embassy_usb::class::hid::State,
-        embassy_usb::class::hid::State::new()
+        embassy_usb::class::hid::device::State,
+        embassy_usb::class::hid::device::State::new()
     );
 
     let keyboard_hid_writer = HidWriter::new(
         builder,
         keyboard_state,
-        embassy_usb::class::hid::Config {
+        embassy_usb::class::hid::device::Config {
             report_descriptor: NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR,
             request_handler: None,
             poll_ms: 2,
             max_packet_size: 64,
+            hid_subclass: embassy_usb::class::hid::HidSubclass::No,
+            hid_boot_protocol: embassy_usb::class::hid::HidBootProtocol::None,
         },
     );
 
-    spawner.must_spawn(keyboard_writer(keyboard_hid_writer));
+    spawner.spawn(keyboard_writer(keyboard_hid_writer).unwrap());
 }

@@ -3,7 +3,7 @@ use core::num::Wrapping;
 use embassy_time::Duration;
 use fixed::types::{I16F16, U0F16, U16F16};
 use fixed_macro::fixed;
-use rand::Rng;
+use rand::RngExt;
 
 use crate::{
     rgb::{
@@ -41,11 +41,11 @@ pub struct Perlin {
 
 impl Default for Perlin {
     fn default() -> Self {
-        let seed: u8 = MyRng.gen();
+        let seed: u8 = MyRng.random();
 
-        let colour = if MyRng.gen_bool(0.2) {
+        let colour = if MyRng.random_bool(0.2) {
             ColourMode::Random
-        } else if MyRng.gen_bool(0.4) {
+        } else if MyRng.random_bool(0.4) {
             let a = rand_decimal();
             let b = (a + 0.5) % 1.0;
 

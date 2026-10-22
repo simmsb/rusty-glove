@@ -113,7 +113,7 @@ pub struct Bonder {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone, Debug)]
-struct SavedBonds(heapless::FnvIndexSet<Address, 8>);
+struct SavedBonds(heapless::index_set::FnvIndexSet<Address, 8>);
 
 #[derive(serde::Serialize)]
 struct BondKey(Address);

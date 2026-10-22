@@ -1,5 +1,5 @@
 use embassy_executor::Spawner;
-use embassy_nrf::{gpio::AnyPin, peripherals::PWM0};
+use embassy_nrf::{gpio::AnyPin, peripherals::PWM0, Peri};
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
 use embassy_time::{Duration, Timer, WithTimeout};
 
@@ -21,17 +21,17 @@ mod runner;
 
 pub(super) static RGB_CMD_CHANNEL: Channel<ThreadModeRawMutex, Command, 1> = Channel::new();
 
-pub fn init(spawner: &Spawner, pwm: PWM0, pin: AnyPin) {
+pub fn init(spawner: &Spawner, pwm: Peri<'static, PWM0>, pin: Peri<'static, AnyPin>) {
     crate::log::info!("Initialising RGB");
     let d = driver::Ws2812::new(pwm, pin);
 
-    spawner.must_spawn(runner::rgb_runner(d));
-    spawner.must_spawn(runner::apply_keypresses());
-    spawner.must_spawn(runner::sparkle_ticker());
-    spawner.must_spawn(command_listener());
+    spawner.spawn(runner::rgb_runner(d).unwrap());
+    spawner.spawn(runner::apply_keypresses().unwrap());
+    spawner.spawn(runner::sparkle_ticker().unwrap());
+    spawner.spawn(command_listener().unwrap());
 
     if side::is_master() {
-        spawner.must_spawn(animation_randomizer());
+        spawner.spawn(animation_randomizer().unwrap());
     }
 }
 

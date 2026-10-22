@@ -7,15 +7,10 @@ pub use defmt as log;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Instant, Timer};
 
-#[cfg(feature = "logging")]
-pub use log_log as log;
-
-#[cfg(feature = "logging")]
-pub trait WhichDebug = ::core::fmt::Debug;
 #[cfg(feature = "probe")]
 pub trait WhichDebug = ::defmt::Format;
 
-#[cfg(not(any(feature = "logging", feature = "probe")))]
+#[cfg(not(feature = "probe"))]
 pub trait WhichDebug = ::core::marker::Sized;
 
 pub mod noop_log {
@@ -34,7 +29,7 @@ pub mod noop_log {
     }
 }
 
-#[cfg(not(any(feature = "logging", feature = "probe")))]
+#[cfg(not(feature = "probe"))]
 pub use noop_log as log;
 
 #[macro_export]
@@ -90,7 +85,7 @@ pub mod executor_metrics {
 pub struct MeasuringExecutor {
     inner: embassy_executor::raw::Executor,
     not_send: PhantomData<*mut ()>,
-    samples: heapless::HistoryBuffer<(u16, u16), 8>,
+    samples: heapless::HistoryBuf<(u16, u16), 8>,
 }
 
 const THREAD_PENDER: usize = usize::MAX;
@@ -106,7 +101,7 @@ impl MeasuringExecutor {
         Self {
             inner: embassy_executor::raw::Executor::new(THREAD_PENDER as *mut ()),
             not_send: PhantomData,
-            samples: heapless::HistoryBuffer::new(),
+            samples: heapless::HistoryBuf::new(),
         }
     }
 

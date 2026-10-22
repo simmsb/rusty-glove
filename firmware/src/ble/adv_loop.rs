@@ -58,10 +58,11 @@ pub async fn advertisement_loop(
         )
         .build();
 
-    let part = embassy_nrf::pac::FICR.info().part().read().part().0;
+    let part = embassy_nrf::pac::FICR.info().part().read().part().to_bits();
     let variant = embassy_nrf::pac::FICR.info().variant().read();
 
-    let spawner = embassy_executor::Spawner::for_current_executor().await;
+    // SAFETY: we're running inside an embassy task
+    let spawner = unsafe { embassy_executor::Spawner::for_current_executor() }.await;
 
     loop {
         crate::log::info!("Advertising ourselves");
@@ -85,13 +86,10 @@ pub async fn advertisement_loop(
             conn.security_mode()
         );
 
-        let _ = spawner.spawn(handle_connection(
-            conn,
-            part,
-            variant,
-            dfuconfig.clone(),
-            server.clone(),
-        ));
+        if let Ok(token) = handle_connection(conn, part, variant, dfuconfig.clone(), server.clone())
+        {
+            spawner.spawn(token);
+        }
     }
 }
 

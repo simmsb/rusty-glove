@@ -5,7 +5,7 @@ use embassy_time::Duration;
 use fixed::types::{I16F16, U0F16, U16F16};
 use fixed_macro::fixed;
 use micromath::F32Ext;
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, RngExt, SeedableRng};
 
 use crate::{
     rgb::{
@@ -36,9 +36,9 @@ const BOUNDS: (Range<i16>, Range<i16>) = (-20..180, -30..120);
 
 impl Default for Rain {
     fn default() -> Self {
-        let seed: u8 = MyRng.gen();
+        let seed: u8 = MyRng.random();
 
-        let colour = if MyRng.gen_bool(0.2) {
+        let colour = if MyRng.random_bool(0.2) {
             None
         } else {
             Some(rand_rainbow())
@@ -79,8 +79,8 @@ impl Animation for Rain {
             })
         {
             let (x_range, y_range) = BOUNDS;
-            let x = self.rng.gen_range(x_range);
-            let y = self.rng.gen_range(y_range);
+            let x = self.rng.random_range(x_range);
+            let y = self.rng.random_range(y_range);
 
             let splash = Splash {
                 x: I16F16::from_num(x),

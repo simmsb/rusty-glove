@@ -23,7 +23,7 @@ pub fn init_peripheral(
     dfuconfig: DfuConfig,
 ) {
     crate::log::trace!("Setting up ble (peripheral)");
-    spawner.must_spawn(peripheral(sd, server, dfuconfig));
+    spawner.spawn(peripheral(sd, server, dfuconfig).unwrap());
 }
 
 #[embassy_executor::task]
@@ -32,9 +32,10 @@ async fn peripheral(sd: &'static Softdevice, server: GloveServer, dfuconfig: Dfu
 
     let bonder = load_bonder().await;
 
-    embassy_executor::Spawner::for_current_executor()
+    // SAFETY: we're running inside an embassy task
+    unsafe { embassy_executor::Spawner::for_current_executor() }
         .await
-        .must_spawn(save_bondinfo_loop(bonder));
+        .spawn(save_bondinfo_loop(bonder).unwrap());
 
     adv_loop::advertisement_loop(sd, server, bonder, dfuconfig).await;
 }

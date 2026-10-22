@@ -9,7 +9,7 @@ use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use heapless::Vec;
 use nrf_softdevice::{Flash, FlashError};
 use once_cell::sync::OnceCell;
-use rand::Rng;
+use rand::RngExt;
 
 use crate::rng::MyRng;
 
@@ -35,7 +35,7 @@ async fn init_inner(
     );
 
     let mut cfg = ekv::Config::default();
-    cfg.random_seed = MyRng.gen();
+    cfg.random_seed = MyRng.random();
     let db = Database::new(flash, cfg);
 
     if let Err(err) = db.mount().await {

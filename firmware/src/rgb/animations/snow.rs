@@ -4,7 +4,7 @@ use cichlid::ColorRGB;
 use embassy_time::Duration;
 use fixed::types::{I16F16, U0F16, U16F16};
 use fixed_macro::fixed;
-use rand::{rngs::SmallRng, seq::IteratorRandom, Rng, SeedableRng};
+use rand::{rngs::SmallRng, seq::IteratorRandom, RngExt, SeedableRng};
 use shared::side::KeyboardSide;
 
 use crate::{
@@ -38,7 +38,7 @@ const Y_BOUNDS: Range<i16> = -40..130;
 
 impl Default for Snow {
     fn default() -> Self {
-        let seed: u8 = MyRng.gen();
+        let seed: u8 = MyRng.random();
 
         Self {
             tick: Default::default(),

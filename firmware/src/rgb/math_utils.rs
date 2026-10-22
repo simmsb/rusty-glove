@@ -5,7 +5,7 @@ use fixed_macro::fixed;
 
 use fixed::types::{I16F16, U0F16, U16F16};
 use palette::{blend::Blend, convert::FromColorUnclamped, LinSrgb, Mix, Okhsv, OklabHue};
-use rand::Rng;
+use rand::RngExt;
 
 use crate::rng::MyRng;
 
@@ -66,7 +66,7 @@ pub(crate) fn sqr(x: I16F16) -> I16F16 {
 }
 
 pub(crate) fn rand_decimal() -> f32 {
-    MyRng.gen()
+    MyRng.random()
 }
 
 pub(crate) fn rand_rainbow() -> ColorRGB {

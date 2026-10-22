@@ -2,7 +2,6 @@ use core::{array, num::NonZeroU8};
 
 use cichlid::ColorRGB;
 use embassy_futures::select::{select, select3};
-use embassy_nrf::peripherals::PWM0;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_time::{Duration, Instant, Timer};
 use fixed::types::{U16F16, U32F32};
@@ -96,7 +95,7 @@ impl<'a, T: Animation> PerformingAnimation<'a, T> {
 }
 
 #[embassy_executor::task]
-pub async fn rgb_runner(mut driver: Ws2812<PWM0, { NUM_LEDS as usize }>) {
+pub async fn rgb_runner(mut driver: Ws2812<{ NUM_LEDS as usize }>) {
     let mut current_colours = [ColorRGB::Black; NUM_LEDS as usize];
     let mut next_colours = [ColorRGB::Black; NUM_LEDS as usize];
 

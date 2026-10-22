@@ -87,7 +87,7 @@ pub fn chords(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let mut keys_map = phf_codegen::Map::new();
         let num_keys = c.inputs.len();
         for (i, key) in c.inputs.iter().enumerate() {
-            keys_map.entry([key.val.0, key.val.1], &i.to_string());
+            keys_map.entry([key.val.0, key.val.1], i.to_string());
         }
         let keys_t = keys_map.build().to_string().parse::<TokenStream>().unwrap();
         let key_states_t = singleton(quote!([bool; #num_keys]), quote!([false; #num_keys]));
@@ -117,7 +117,7 @@ pub fn chords(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     for (key, val) in key_chord_map {
         key_chord_map_p.entry(
             [key.0, key.1],
-            &format!("{{ static A: &[usize] = &{:?}; A }}", val),
+            format!("{{ static A: &[usize] = &{:?}; A }}", val),
         );
     }
     let key_chord_map_t = key_chord_map_p
