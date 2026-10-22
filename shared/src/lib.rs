@@ -4,4 +4,6 @@ pub mod cmd;
 pub mod device_to_host;
 pub mod hid;
 pub mod host_to_device;
+pub mod mac;
+pub mod net;
 pub mod side;

@@ -2,13 +2,15 @@ cargo-features = ["panic-immediate-abort"]
 
 [workspace]
 exclude = ["macros"]
-members = ["bootloader", "firmware", "shared"]
+members = ["bootloader", "dongle", "firmware", "net", "shared"]
 resolver = "2"
 
 [patch.crates-io]
 embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy" }
 embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
 embassy-futures = { git = "https://github.com/embassy-rs/embassy" }
+embassy-net = { git = "https://github.com/embassy-rs/embassy" }
+embassy-net-driver-channel = { git = "https://github.com/embassy-rs/embassy" }
 embassy-nrf = { git = "https://github.com/embassy-rs/embassy" }
 embassy-sync = { git = "https://github.com/embassy-rs/embassy" }
 embassy-time = { git = "https://github.com/embassy-rs/embassy" }
@@ -36,7 +38,7 @@ debug = 2
 debug-assertions = false # <-
 incremental = false
 lto = 'fat'
-opt-level = 's'          # <- 3 no longer fits now the BLE controller lives in the app
+opt-level = 's'          # <-
 overflow-checks = false  # <-
 panic = 'immediate-abort'
 

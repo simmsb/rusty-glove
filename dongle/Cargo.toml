@@ -1,0 +1,61 @@
+[package]
+name = "dongle"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+description = "USB dongle for the Glove80: a USB keyboard for the right half, and a way onto its network"
+
+[[bin]]
+name = "dongle"
+path = "src/main.rs"
+
+[dependencies]
+cortex-m = { version = "0.7.9", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt = "0.7.7"
+defmt = "1.2.0"
+# never block, a full log buffer must not stall the radio
+defmt-rtt = { version = "1.3.1", features = ["disable-blocking-mode"] }
+embassy-executor = { version = "0.10.0", features = [
+  "nightly",
+  "platform-cortex-m",
+  "executor-thread",
+  "executor-interrupt",
+  "defmt",
+] }
+embassy-futures = { version = "0.1.2" }
+embassy-net = { version = "0.9.1", features = [
+  "defmt",
+  "tcp",
+  "tcp-listener",
+  "medium-ieee802154",
+  "medium-ethernet",
+  "sixlowpan-fragmentation",
+  "sixlowpan-reassembly",
+  "ipv4",
+  "dhcpv4-server",
+  "icmp-ping-reply",
+] }
+embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "time", "defmt"] }
+embassy-os-guess = { git = "https://github.com/simmsb/embassy-os-guess", version = "0.1.0", features = ["defmt"] }
+embassy-sync = { version = "0.8.0", features = ["defmt"] }
+embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-usb = { version = "0.6.0", features = ["defmt"] }
+embedded-io-async = { version = "0.7.0" }
+glove-net = { path = "../net", features = ["defmt"] }
+panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+panic-reset = { version = "0.1.1", optional = true }
+portable-atomic = { version = "1.15.0", features = [] }
+postcard = { version = "1.1.3", default-features = false, features = ["experimental-derive", "use-defmt"] }
+shared = { path = "../shared", features = ["defmt"] }
+static_cell = { version = "2.1.1", features = ["nightly"] }
+usbd-human-interface-device = "0.6.1"
+# only here to raise the socket limits, it must match embassy-net's
+xarxa = { git = "https://github.com/embassy-rs/xarxa", rev = "8f6f33b131deb9ff3290e0e01079537e1ed7b2ad", default-features = false, features = [
+  "tcp-socket-count-8",
+  "tcp-listener-count-4",
+] }
+
+[features]
+default = ["panic-probe"]
+# use with --no-default-features
+reboot_on_panic = ["dep:panic-reset"]

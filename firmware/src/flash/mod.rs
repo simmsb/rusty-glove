@@ -6,13 +6,16 @@ use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use heapless::Vec;
-use nrf_sdc::mpsl::FlashError;
+use embassy_embedded_hal::adapter::BlockingAsync;
+use embassy_nrf::nvmc::{Error as FlashError, Nvmc};
+use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use once_cell::sync::OnceCell;
 use rand::RngExt;
 
 use crate::rng::MyRng;
 
-pub type Flash = nrf_sdc::mpsl::Flash<'static>;
+/// Erasing blocks everything else while it runs, about 85ms a page
+pub type Flash = BlockingAsync<Nvmc<'static>>;
 
 pub struct MkSend<T>(pub T);
 
@@ -307,7 +310,7 @@ impl flash::Flash for DbFlash {
         let address = self.start + page_id.index() * config::PAGE_SIZE + offset;
         let mut buf = AlignedBuf([0; config::PAGE_SIZE]);
         let mut guard = self.flash.lock().await;
-        guard.0.read(address as u32, &mut buf.0[..data.len()])?;
+        guard.0.read(address as u32, &mut buf.0[..data.len()]).await?;
         data.copy_from_slice(&buf.0[..data.len()]);
         Ok(())
     }

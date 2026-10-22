@@ -10,7 +10,7 @@ use packed_struct::PrimitiveEnum;
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
 
 use crate::{
-    ble::hid::publish_keyboard_report,
+    dongle::publish_keyboard_report,
     interboard::{self},
     messages::device_to_device::DeviceToDevice,
     side,
@@ -128,10 +128,33 @@ async fn receive_events_from_other_side() {
         .unwrap();
     let key_events = KEY_EVENTS.publisher().unwrap();
 
+    // what the other side has held, so we can let go of it if the link drops
+    // and the releases never arrive
+    let mut held = heapless::Vec::<(u8, u8), 32>::new();
+
     loop {
-        let evt = match sub.next_message_pure().await {
-            DeviceToDevice::KeyPress(x, y) => Event::Press(x, y),
-            DeviceToDevice::KeyRelease(x, y) => Event::Release(x, y),
+        let msg = match select(sub.next_message_pure(), interboard::CONNECTED.wait()).await {
+            embassy_futures::select::Either::First(msg) => msg,
+            embassy_futures::select::Either::Second(true) => continue,
+            embassy_futures::select::Either::Second(false) => {
+                for (x, y) in held.drain(..) {
+                    key_events.publish(Event::Release(x, y)).await;
+                }
+                continue;
+            }
+        };
+
+        let evt = match msg {
+            DeviceToDevice::KeyPress(x, y) => {
+                if !held.contains(&(x, y)) {
+                    _ = held.push((x, y));
+                }
+                Event::Press(x, y)
+            }
+            DeviceToDevice::KeyRelease(x, y) => {
+                held.retain(|k| *k != (x, y));
+                Event::Release(x, y)
+            }
             _ => {
                 continue;
             }

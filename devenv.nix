@@ -21,6 +21,7 @@ in
     gcc-arm-embedded
     keylayout_lang
     dfu_ble
+    python3
     keymap-drawer
   ];
 

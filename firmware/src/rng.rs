@@ -35,30 +35,8 @@ impl rand::TryRng for MyRng {
     }
 }
 
-/// Adapts the hardware RNG to the rand_core version that nrf-sdc uses
-pub struct SdcRng(pub &'static mut embassy_nrf::rng::Rng<'static, Async>);
-
-impl rand_core09::RngCore for SdcRng {
-    fn next_u32(&mut self) -> u32 {
-        let mut buf = [0u8; 4];
-        self.fill_bytes(&mut buf);
-        u32::from_le_bytes(buf)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut buf = [0u8; 8];
-        self.fill_bytes(&mut buf);
-        u64::from_le_bytes(buf)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.0.blocking_fill_bytes(dest)
-    }
-}
-
-impl rand_core09::CryptoRng for SdcRng {}
-
-pub async fn init(rng: &mut embassy_nrf::rng::Rng<'static, Async>) {
+/// Seeds our RNG from the hardware one, returning another seed for the network stack
+pub async fn init(rng: &mut embassy_nrf::rng::Rng<'_, Async>) -> u64 {
     crate::log::info!("Initialising the RNG");
     let mut buf = [0u8; 8];
     rng.fill_bytes(&mut buf).await;
@@ -68,4 +46,7 @@ pub async fn init(rng: &mut embassy_nrf::rng::Rng<'static, Async>) {
 
     let _ = RNG.set(Mutex::new(RefCell::new(SmallRng::seed_from_u64(seed))));
     crate::log::info!("RNG initialised");
+
+    rng.fill_bytes(&mut buf).await;
+    u64::from_le_bytes(buf)
 }

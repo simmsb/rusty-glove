@@ -32,8 +32,9 @@ pub use usb_driver::{set_guesser, USBDriver};
 static GUESSED_OS: once_cell::sync::OnceCell<embassy_os_guess::OS> =
     once_cell::sync::OnceCell::new();
 
+/// Prefers what the dongle saw, as that's what we're typing into
 pub fn guessed_host_os() -> Option<embassy_os_guess::OS> {
-    GUESSED_OS.get().copied()
+    crate::dongle::host_os().or_else(|| GUESSED_OS.get().copied())
 }
 
 pub fn init(spawner: &Spawner, driver: Driver<'static, HardwareVbusDetect>) {

@@ -1,8 +1,10 @@
 default:
   @just -l
 
-on:
+on_kbd:
     glasgow run probe-rs -V 'A=SA' --swclk 'A3' --swdio 'A2'
+on_dongle:
+    glasgow run probe-rs -V 'B=SB' --swclk 'B0' --swdio 'B1'
 
 off:
     glasgow safe
@@ -10,6 +12,7 @@ off:
 build:
   env DEFMT_LOG="off" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic
   env DEFMT_LOG="off" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic
+  env DEFMT_LOG="off" cargo build -p dongle --release --bin dongle --no-default-features --features reboot_on_panic
 
 left:
   env DEFMT_LOG="off" cargo strip -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- --strip-all -o target/left.elf
@@ -19,8 +22,19 @@ right:
 
 both: left right
 
+dongle:
+  env DEFMT_LOG="off" cargo strip -p dongle --release --bin dongle --no-default-features --features reboot_on_panic -- --strip-all -o target/dongle.elf
+
+dongle_flash: dongle
+  probe-rs download --chip nRF52840_xxAA --protocol swd target/dongle.elf
+  probe-rs reset --chip nRF52840_xxAA --protocol swd
+
 bootloader:
-  env DEFMT_LOG=trace cargo run -p bootloader --release --bin bootloader 
+  cargo run -p bootloader --release --bin bootloader
+
+# the application's logs won't show up while this bootloader is installed
+bootloader_debug:
+  env DEFMT_LOG=trace cargo run -p bootloader --release --bin bootloader --features logging
 
 left_uf2: left
   elf2uf2-rs --family-id 0x9807B007 target/left.elf left.uf2
@@ -30,14 +44,26 @@ right_uf2: right
 both_uf2: both
   cat left.uf2 right.uf2 > both.uf2
 
-info:
-  ble-dfu info
+# flat binaries for updating over the network
+left_bin:
+  env DEFMT_LOG="off" cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- -O binary target/left.bin
 
-left_ble: left
-  ble-dfu update left target/left.elf
+right_bin:
+  env DEFMT_LOG="off" cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic -- -O binary target/right.bin
 
-right_ble: right
-  ble-dfu update right target/right.elf
+# update a half through the dongle
+left_net: left_bin
+  tools/glove-dfu.py left target/left.bin
+
+right_net: right_bin
+  tools/glove-dfu.py right target/right.bin
+
+# keep the image a half is running, e.g. after updating it over BLE
+left_confirm:
+  tools/glove-dfu.py left --confirm-only
+
+right_confirm:
+  tools/glove-dfu.py right --confirm-only
 
 # left_dfu:
 #   env DEFMT_LOG="" cargo objcopy --release -p rusty-glove --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- -O ihex target/left.hex
@@ -54,13 +80,16 @@ draw:
   keylayout_lang emit -m keymap-drawer layouts/rusty-glove.kl > layouts/rusty-glove.yaml
   keymap draw layouts/rusty-glove.yaml > layouts/rusty-glove.svg
 
-DEFMT_LOG_DEF_TRACE := env("DEFMT", "trace,ekv=info,trouble_host=info,nrf_sdc=info,nrf_mpsl=info")
+DEFMT_LOG_DEF_TRACE := env("DEFMT", "trace,ekv=info,xarxa=info,embassy_net=info")
 
 debug_left:
   env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side
 
 debug_right:
   env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side
+
+debug_dongle:
+  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p dongle --release --bin dongle
 
 attach_right:
   probe-rs attach --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug-trace/binary
