@@ -1,6 +1,7 @@
 /**/target
 /**/result
 /.direnv
+/.devenv
 /.DS_Store
 **/*.uf2
 /.vscode

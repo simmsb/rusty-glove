@@ -6,3 +6,10 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+  keylayout:
+    url: github:simmsb/keylayout
+    overlays:
+      - default
+  ble-dfu:
+    url: github:simmsb/rust-ble-dfu
+    flake: false
