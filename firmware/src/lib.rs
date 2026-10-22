@@ -14,11 +14,12 @@ use embassy_nrf::{
     config::{HfclkSource, LfclkSource},
     gpio::{Input, Level, Output, OutputDrive, Pull},
     interrupt::InterruptExt,
-    usb::vbus_detect::SoftwareVbusDetect,
+    mode::Async,
+    usb::vbus_detect::HardwareVbusDetect,
 };
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
 use embassy_time::Timer;
-use nrf_softdevice::Softdevice;
+use nrf_sdc::mpsl::{self, MultiprotocolServiceLayer};
 
 #[cfg(feature = "probe")]
 use defmt_rtt as _;
@@ -27,7 +28,6 @@ use panic_probe as _;
 #[cfg(feature = "reboot_on_panic")]
 use panic_reset as _;
 
-use usb::VBUS_DETECT;
 use utils::log;
 
 use crate::keys::ScannerInstance;
@@ -54,51 +54,8 @@ pub fn set_status_led(_value: Level) {
 pub static VERSION: &str = "0.1.0";
 
 #[embassy_executor::task]
-async fn softdevice_task(sd: &'static Softdevice) -> ! {
-    use nrf_softdevice::SocEvent;
-    use nrf_softdevice_s140::NRF_POWER_DCDC_MODES_NRF_POWER_DCDC_ENABLE;
-
-    unsafe {
-        nrf_softdevice::raw::sd_power_dcdc_mode_set(
-            NRF_POWER_DCDC_MODES_NRF_POWER_DCDC_ENABLE as u8,
-        );
-        nrf_softdevice::raw::sd_power_dcdc0_mode_set(
-            NRF_POWER_DCDC_MODES_NRF_POWER_DCDC_ENABLE as u8,
-        );
-    }
-    unsafe {
-        nrf_softdevice::raw::sd_power_usbpwrrdy_enable(1);
-        nrf_softdevice::raw::sd_power_usbdetected_enable(1);
-        nrf_softdevice::raw::sd_power_usbremoved_enable(1);
-    };
-
-    unsafe {
-        // always use hfclk, by default SD only turns it on when the radio comes
-        // on, but switching over causes jitter on the pwm peripheral...
-        nrf_softdevice_s140::sd_clock_hfclk_request();
-    }
-
-    let software_vbus = VBUS_DETECT.get().unwrap();
-
-    sd.run_with_callback(|event: SocEvent| {
-        log::debug!("SD event: {:?}", event);
-        match event {
-            SocEvent::PowerUsbRemoved => {
-                software_vbus.detected(false);
-                state::USB_CONNECTED.set(false);
-            }
-            SocEvent::PowerUsbDetected => {
-                software_vbus.detected(true);
-                state::USB_CONNECTED.set(true);
-            }
-            SocEvent::PowerUsbPowerReady => {
-                software_vbus.ready();
-                state::USB_CONNECTED.set(true);
-            }
-            _ => {}
-        };
-    })
-    .await
+async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
+    mpsl.run().await
 }
 
 // Keeps our system alive
@@ -119,11 +76,17 @@ mod ints {
 
     use embassy_nrf::bind_interrupts;
 
-    bind_interrupts!(pub struct UsbIrqs {
+    bind_interrupts!(pub struct Irqs {
         USBD => embassy_nrf::usb::InterruptHandler<embassy_nrf::peripherals::USBD>;
+        CLOCK_POWER => nrf_sdc::mpsl::ClockInterruptHandler, embassy_nrf::usb::vbus_detect::InterruptHandler;
+        RNG => embassy_nrf::rng::InterruptHandler<embassy_nrf::peripherals::RNG>;
+        EGU0_SWI0 => nrf_sdc::mpsl::LowPrioInterruptHandler;
+        RADIO => nrf_sdc::mpsl::HighPrioInterruptHandler;
+        TIMER0 => nrf_sdc::mpsl::HighPrioInterruptHandler;
+        RTC0 => nrf_sdc::mpsl::HighPrioInterruptHandler;
     });
 }
-pub use ints::UsbIrqs;
+pub use ints::Irqs;
 
 // bind_interrupts!(struct I2SIrqs {
 //     I2S => embassy_nrf::i2s::InterruptHandler<embassy_nrf::peripherals::I2S>;
@@ -146,85 +109,61 @@ pub async fn main(spawner: Spawner) {
         config
     };
 
+    // the MPSL sets the priorities of the radio and clock interrupts itself
     embassy_nrf::interrupt::USBD.set_priority(embassy_nrf::interrupt::Priority::P2);
-    embassy_nrf::interrupt::CLOCK_POWER.set_priority(embassy_nrf::interrupt::Priority::P2);
     embassy_nrf::interrupt::PWM0.set_priority(embassy_nrf::interrupt::Priority::P2);
     embassy_nrf::interrupt::RNG.set_priority(embassy_nrf::interrupt::Priority::P3);
 
     let p = embassy_nrf::init(config);
 
-    use nrf_softdevice::ble::set_address;
-
-    let config = nrf_softdevice::Config {
-        clock: Some(nrf_softdevice::raw::nrf_clock_lf_cfg_t {
-            source: nrf_softdevice::raw::NRF_CLOCK_LF_SRC_XTAL as u8,
+    let mpsl = {
+        let mpsl_p =
+            mpsl::Peripherals::new(p.RTC0, p.TIMER0, p.TEMP, p.PPI_CH19, p.PPI_CH30, p.PPI_CH31);
+        let lfclk_cfg = mpsl::raw::mpsl_clock_lfclk_cfg_t {
+            source: mpsl::raw::MPSL_CLOCK_LF_SRC_XTAL as u8,
             rc_ctiv: 0,
             rc_temp_ctiv: 0,
-            accuracy: nrf_softdevice::raw::NRF_CLOCK_LF_ACCURACY_20_PPM as u8,
-        }),
-        gatts_attr_tab_size: Some(nrf_softdevice::raw::ble_gatts_cfg_attr_tab_size_t {
-            attr_tab_size: 32768,
-        }),
-        conn_gap: Some(nrf_softdevice::raw::ble_gap_conn_cfg_t {
-            conn_count: 3,
-            event_length: 24,
-        }),
-        conn_gatt: Some(nrf_softdevice::raw::ble_gatt_conn_cfg_t { att_mtu: 256 }),
-        gap_role_count: Some(nrf_softdevice::raw::ble_gap_cfg_role_count_t {
-            adv_set_count: 1,
-            periph_role_count: 4,
-            central_role_count: 4,
-            central_sec_count: 1,
-            _bitfield_1: nrf_softdevice::raw::ble_gap_cfg_role_count_t::new_bitfield_1(0),
-        }),
-        gap_device_name: Some(nrf_softdevice::raw::ble_gap_cfg_device_name_t {
-            p_value: b"Rusty Glove" as *const u8 as _,
-            current_len: 11,
-            max_len: 11,
-            write_perm: unsafe { core::mem::zeroed() },
-            _bitfield_1: nrf_softdevice::raw::ble_gap_cfg_device_name_t::new_bitfield_1(
-                nrf_softdevice::raw::BLE_GATTS_VLOC_STACK as u8,
-            ),
-        }),
-        ..Default::default()
+            accuracy_ppm: 20,
+            skip_wait_lfclk_started: false,
+        };
+        let session_mem = singleton!(mpsl::SessionMem<1>, mpsl::SessionMem::new());
+
+        singleton!(
+            MultiprotocolServiceLayer<'static>,
+            MultiprotocolServiceLayer::with_timeslots(mpsl_p, Irqs, lfclk_cfg, session_mem)
+                .unwrap()
+        )
     };
+    spawner.spawn(mpsl_task(mpsl).unwrap());
 
-    let sd = Softdevice::enable(&config);
+    // always keep the hfxo running, by default the MPSL only turns it on when
+    // the radio comes on, but switching over causes jitter on the pwm
+    // peripheral...
+    core::mem::forget(mpsl.request_hfclk().await.unwrap());
 
-    if !side::is_master() {
-        set_address(sd, &interboard::ble::PERIPHERAL_ADDRESS);
-    }
+    log::trace!("Configured MPSL");
 
-    // set_address(
-    //     sd,
-    //     &if side::is_master() {
-    //         interboard::ble::CENTRAL_ADDRESS
-    //     } else {
-    //         interboard::ble::PERIPHERAL_ADDRESS
-    //     },
-    // );
+    let rng = singleton!(
+        embassy_nrf::rng::Rng<'static, Async>,
+        embassy_nrf::rng::Rng::new(p.RNG, Irqs)
+    );
+    rng::init(rng).await;
 
-    log::trace!("Configured softdevice");
+    let sdc = ble::make_controller(
+        nrf_sdc::Peripherals::new(
+            p.PPI_CH17, p.PPI_CH18, p.PPI_CH20, p.PPI_CH21, p.PPI_CH22, p.PPI_CH23, p.PPI_CH24,
+            p.PPI_CH25, p.PPI_CH26, p.PPI_CH27, p.PPI_CH28, p.PPI_CH29,
+        ),
+        rng,
+        mpsl,
+    );
 
-    // unsafe {
-    //     reboot_to_bootloader();
-    //     check_bootloader();
-    // }
-
-    let flash_mutex = singleton!(Mutex<ThreadModeRawMutex, flash::MkSend<nrf_softdevice::Flash>>,
-                                 Mutex::new(flash::MkSend(nrf_softdevice::Flash::take(sd)))
+    let flash_mutex = singleton!(Mutex<ThreadModeRawMutex, flash::MkSend<flash::Flash>>,
+                                 Mutex::new(flash::MkSend(flash::Flash::take(mpsl, p.NVMC)))
     );
 
     let dfuconfig = DfuConfig::new(flash_mutex);
-    let host_server = ble::make_ble_server(sd);
 
-    if side::is_master() {
-        interboard::init_central(&spawner, sd);
-    }
-
-    ble::init_peripheral(&spawner, sd, host_server, dfuconfig.clone());
-
-    spawner.spawn(softdevice_task(sd).unwrap());
     spawner.spawn(watchdog_task().unwrap());
 
     set_status_led(Level::High);
@@ -234,16 +173,16 @@ pub async fn main(spawner: Spawner) {
 
     set_status_led(Level::High);
 
-    let vbus_detect = VBUS_DETECT.get_or_init(|| SoftwareVbusDetect::new(true, false));
-    let usb_driver = embassy_nrf::usb::Driver::new(p.USBD, UsbIrqs, vbus_detect);
+    let usb_driver = embassy_nrf::usb::Driver::new(p.USBD, Irqs, HardwareVbusDetect::new(Irqs));
 
     usb::init(&spawner, usb_driver);
 
     messages::init(&spawner);
 
-    rng::init(sd).await;
-
     flash::init(flash_mutex).await;
+
+    // the bonds are stored in flash, so bring the ble stack up after the database
+    ble::init(&spawner, sdc, dfuconfig.clone()).await;
 
     rgb::init(&spawner, p.PWM0, pins::take_leds!(p).into());
     // rgb::init(&spawner, p.I2S, pins::take_leds!(p).degrade(), I2SIrqs,

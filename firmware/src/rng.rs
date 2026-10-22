@@ -1,8 +1,8 @@
 use core::{cell::RefCell, convert::Infallible, num::Wrapping};
 
+use embassy_nrf::mode::Async;
 use embassy_sync::blocking_mutex::{raw::ThreadModeRawMutex, Mutex};
 use embassy_time::Instant;
-use nrf_softdevice::Softdevice;
 use once_cell::sync::OnceCell;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 
@@ -35,13 +35,33 @@ impl rand::TryRng for MyRng {
     }
 }
 
-pub async fn init(sd: &Softdevice) {
+/// Adapts the hardware RNG to the rand_core version that nrf-sdc uses
+pub struct SdcRng(pub &'static mut embassy_nrf::rng::Rng<'static, Async>);
+
+impl rand_core09::RngCore for SdcRng {
+    fn next_u32(&mut self) -> u32 {
+        let mut buf = [0u8; 4];
+        self.fill_bytes(&mut buf);
+        u32::from_le_bytes(buf)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut buf = [0u8; 8];
+        self.fill_bytes(&mut buf);
+        u64::from_le_bytes(buf)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.0.blocking_fill_bytes(dest)
+    }
+}
+
+impl rand_core09::CryptoRng for SdcRng {}
+
+pub async fn init(rng: &mut embassy_nrf::rng::Rng<'static, Async>) {
     crate::log::info!("Initialising the RNG");
     let mut buf = [0u8; 8];
-    while let Err(e) = nrf_softdevice::random_bytes(sd, &mut buf) {
-        crate::log::trace!("Random failed with: {}", e);
-        embassy_time::Timer::after_millis(10).await;
-    }
+    rng.fill_bytes(&mut buf).await;
     crate::log::debug!("Got random bytes: {=[u8; 8]}", buf);
     let mut seed = splitmix64(u64::from_be_bytes(buf));
     seed ^= splitmix64(Instant::now().as_ticks());

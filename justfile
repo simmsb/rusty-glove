@@ -1,6 +1,12 @@
 default:
   @just -l
 
+on:
+    glasgow run probe-rs -V 'A=SA' --swclk 'A3' --swdio 'A2'
+
+off:
+    glasgow safe
+
 build:
   env DEFMT_LOG="off" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic
   env DEFMT_LOG="off" cargo build -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic
@@ -48,13 +54,13 @@ draw:
   keylayout_lang emit -m keymap-drawer layouts/rusty-glove.kl > layouts/rusty-glove.yaml
   keymap draw layouts/rusty-glove.yaml > layouts/rusty-glove.svg
 
-DEFMT_LOG_DEF_TRACE := env("DEFMT", "trace,ekv=info,nrf_softdevice=trace")
+DEFMT_LOG_DEF_TRACE := env("DEFMT", "trace,ekv=info,trouble_host=info,nrf_sdc=info,nrf_mpsl=info")
 
 debug_left:
-  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_left,default_unselected_side
+  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side
 
 debug_right:
-  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --profile debug-trace --bin binary --no-default-features --features side_right,default_unselected_side
+  env DEFMT_LOG={{DEFMT_LOG_DEF_TRACE}} cargo run -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side
 
 attach_right:
   probe-rs attach --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug-trace/binary

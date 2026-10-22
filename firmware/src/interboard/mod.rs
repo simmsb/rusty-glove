@@ -3,18 +3,19 @@ pub use self::channel::THIS_SIDE_MESSAGE_BUS;
 use crate::messages::device_to_device::DeviceToDevice;
 use channel::COMMANDS_TO_OTHER_SIDE;
 use embassy_executor::Spawner;
-use nrf_softdevice::Softdevice;
+
+use crate::ble::BleStack;
 pub mod ble;
 mod ble_central;
 pub mod channel;
 
-pub fn init_central(spawner: &Spawner, sd: &'static Softdevice) {
+pub fn init_central(spawner: &Spawner, stack: &'static BleStack) {
     crate::log::trace!("starting central");
-    spawner.spawn(central(sd).unwrap());
+    spawner.spawn(central(stack).unwrap());
 }
 
 #[embassy_executor::task]
-async fn central(sd: &'static Softdevice) {
+async fn central(stack: &'static BleStack) {
     let msg_pub = THIS_SIDE_MESSAGE_BUS.publisher().unwrap();
     let rx_fn = || async { COMMANDS_TO_OTHER_SIDE.receive().await.msg };
     let tx_fn = |e| {
@@ -23,7 +24,7 @@ async fn central(sd: &'static Softdevice) {
 
     crate::log::debug!("Starting central bt task");
 
-    ble_central::central_loop(sd, tx_fn, rx_fn).await;
+    ble_central::central_loop(stack, tx_fn, rx_fn).await;
 }
 
 pub async fn send_msg(msg: DeviceToDevice, priority: u8) {

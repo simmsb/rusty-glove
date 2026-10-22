@@ -1,15 +1,16 @@
-use crate::{flash::MkSend, log::*};
+use crate::{
+    flash::{Flash, MkSend},
+    log::*,
+};
 use embassy_embedded_hal::flash::partition::Partition;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex};
-use embassy_time::Timer;
 use embedded_storage::nor_flash::ErrorType;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use heapless::Vec;
 use nrf_dfu_target::prelude::*;
-use nrf_softdevice::{
-    ble::{gatt_server::NotifyValueError, Connection},
-    Flash,
-};
+use trouble_host::prelude::*;
+
+use super::Pool;
 
 pub const MTU: usize = 120;
 // Aligned to 4 bytes + 3 bytes for header
@@ -17,16 +18,10 @@ pub const ATT_MTU: usize = MTU + 3;
 
 pub type Target = DfuTarget<MTU>;
 
-#[nrf_softdevice::gatt_service(uuid = "FE59")]
-#[derive(Clone)]
+#[gatt_service(uuid = "FE59")]
 pub struct NrfDfuService {
-    #[characteristic(
-        uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50",
-        write,
-        notify,
-        // security = "justworks"
-    )]
-    control: Vec<u8, ATT_MTU>,
+    #[characteristic(uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50", write, notify)]
+    pub control: Vec<u8, ATT_MTU>,
 
     /// The maximum size of each packet is derived from the Att MTU size of the connection.
     /// The maximum Att MTU size of the DFU Service is 256 bytes (saved in NRF_SDH_BLE_GATT_MAX_MTU_SIZE),
@@ -34,47 +29,44 @@ pub struct NrfDfuService {
     #[characteristic(
         uuid = "8EC90002-F315-4F60-9FB8-838830DAEA50",
         write_without_response,
-        notify,
-        // security = "justworks"
+        notify
     )]
-    packet: Vec<u8, ATT_MTU>,
+    pub packet: Vec<u8, ATT_MTU>,
 }
 
-pub struct ConnectionHandle {
-    pub connection: Connection,
-    pub notify_control: bool,
-    pub notify_packet: bool,
+pub enum NrfDfuServiceEvent {
+    ControlWrite(Vec<u8, ATT_MTU>),
+    PacketWrite(Vec<u8, ATT_MTU>),
 }
 
 impl NrfDfuService {
-    async fn process<
-        DFU: NorFlash,
-        F: FnMut(&ConnectionHandle, &[u8]) -> Result<(), NotifyValueError>,
-    >(
+    /// Turn a write to one of our characteristics into an event
+    pub fn on_write(&self, handle: u16, data: &[u8]) -> Option<NrfDfuServiceEvent> {
+        let data = Vec::from_slice(data).ok()?;
+
+        if handle == self.control.handle {
+            Some(NrfDfuServiceEvent::ControlWrite(data))
+        } else if handle == self.packet.handle {
+            Some(NrfDfuServiceEvent::PacketWrite(data))
+        } else {
+            None
+        }
+    }
+
+    async fn process<DFU: NorFlash>(
         &self,
         target: &mut Target,
         dfu: &mut DFU,
-        conn: &mut ConnectionHandle,
+        conn: &GattConnection<'_, '_, Pool>,
         request: DfuRequest<'_>,
-        mut notify: F,
     ) -> DfuStatus {
         let (response, status) = target.process(request, dfu).await;
         let mut buf: [u8; 32] = [0; 32];
         match response.encode(&mut buf[..]) {
             Ok(len) => {
-                for _ in 0..4 {
-                    if notify(conn, &buf[..len]).is_ok() {
-                        break;
-                    }
-
-                    Timer::after_micros(100).await;
-                }
-
-                match notify(conn, &buf[..len]) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!("Error sending notification: {:?}", e);
-                    }
+                let response = Vec::from_slice(&buf[..len]).unwrap();
+                if let Err(e) = self.control.notify(conn, &response, false).await {
+                    warn!("Error sending notification: {:?}", defmt::Debug2Format(&e));
                 }
             }
             Err(e) => {
@@ -88,52 +80,18 @@ impl NrfDfuService {
         &self,
         target: &mut Target,
         dfu: &mut DFU,
-        connection: &mut ConnectionHandle,
+        conn: &GattConnection<'_, '_, Pool>,
         event: NrfDfuServiceEvent,
     ) -> Option<DfuStatus> {
         match event {
             NrfDfuServiceEvent::ControlWrite(data) => {
                 if let Ok((request, _)) = DfuRequest::decode(&data) {
-                    return Some(
-                        self.process(target, dfu, connection, request, |conn, response| {
-                            if conn.notify_control {
-                                self.control_notify(
-                                    &conn.connection,
-                                    &Vec::from_slice(response).unwrap(),
-                                )?;
-                            }
-                            Ok(())
-                        })
-                        .await,
-                    );
+                    return Some(self.process(target, dfu, conn, request).await);
                 }
-            }
-            NrfDfuServiceEvent::ControlCccdWrite { notifications } => {
-                connection.notify_control = notifications;
             }
             NrfDfuServiceEvent::PacketWrite(data) => {
                 let request = DfuRequest::Write { data: &data[..] };
-                return Some(
-                    self.process(target, dfu, connection, request, |conn, response| {
-                        if conn.notify_control {
-                            self.control_notify(
-                                &conn.connection,
-                                &Vec::from_slice(response).unwrap(),
-                            )?;
-                        }
-                        // if conn.notify_packet {
-                        //     self.packet_notify(
-                        //         &conn.connection,
-                        //         &Vec::from_slice(response).unwrap(),
-                        //     )?;
-                        // }
-                        Ok(())
-                    })
-                    .await,
-                );
-            }
-            NrfDfuServiceEvent::PacketCccdWrite { notifications } => {
-                connection.notify_packet = notifications;
+                return Some(self.process(target, dfu, conn, request).await);
             }
         }
         None

@@ -1,10 +1,11 @@
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
-use embassy_time::Timer;
-use nrf_softdevice::ble::Connection;
 use packed_struct::PackedStruct;
+use trouble_host::prelude::*;
 use usbd_human_interface_device::device::keyboard::{
     NKROBootKeyboardReport, NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR,
 };
+
+use super::Pool;
 
 static KEYBOARD_REPORTS: Channel<ThreadModeRawMutex, NKROBootKeyboardReport, 2> = Channel::new();
 
@@ -13,51 +14,40 @@ pub async fn publish_keyboard_report(report: NKROBootKeyboardReport) {
     KEYBOARD_REPORTS.send(report).await;
 }
 
-#[nrf_softdevice::gatt_service(uuid = "1812")]
-#[derive(Clone)]
+type InputReport = <NKROBootKeyboardReport as PackedStruct>::ByteArray;
+
+const REPORT_MAP_LEN: usize = NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR.len();
+const REPORT_MAP: [u8; REPORT_MAP_LEN] = {
+    let mut out = [0u8; REPORT_MAP_LEN];
+    let mut i = 0;
+    while i < REPORT_MAP_LEN {
+        out[i] = NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR[i];
+        i += 1;
+    }
+    out
+};
+
+#[gatt_service(uuid = service::HUMAN_INTERFACE_DEVICE)]
 pub struct HidService {
-    // If you have multiple descriptors, just add them all
-    #[characteristic(
-        uuid = "2A4D",
-        security = "justworks",
-        read,
-        write,
-        notify,
-        descriptor(uuid = "2908", security = "justworks", value = "[0, 1]")
-    )]
-    pub input_report: <NKROBootKeyboardReport as PackedStruct>::ByteArray,
+    #[descriptor(uuid = "2908", read = encrypted, value = [0u8, 1u8])]
+    #[characteristic(uuid = "2A4D", read, write, notify, permissions(encrypted))]
+    pub input_report: InputReport,
 
-    #[characteristic(
-        uuid = "2A4A",
-        security = "justworks",
-        read,
-        value = "[0x1, 0x1, 0x0, 0x03]"
-    )]
-    pub hid_info: u8,
+    #[characteristic(uuid = "2A4A", read, value = [0x1, 0x1, 0x0, 0x03], permissions(encrypted))]
+    pub hid_info: [u8; 4],
 
-    #[characteristic(
-        uuid = "2A4B",
-        security = "justworks",
-        read,
-        value = "NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR"
-    )]
-    pub report_map: [u8; NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR.len()],
+    #[characteristic(uuid = "2A4B", read, value = REPORT_MAP, permissions(encrypted))]
+    pub report_map: [u8; REPORT_MAP_LEN],
 }
 
 impl HidService {
-    pub async fn send_reports(&self, conn: &Connection) -> ! {
+    pub async fn send_reports(&self, conn: &GattConnection<'_, '_, Pool>) -> ! {
         loop {
             let report = KEYBOARD_REPORTS.receive().await;
             let pack = report.pack().unwrap();
 
-            for n in 0u8..20 {
-                if self.input_report_notify(conn, &pack).is_ok() {
-                    break;
-                }
-
-                crate::log::trace!("Failed to send, backing off");
-
-                Timer::after_micros(100 + n as u64 * 500).await;
+            if let Err(e) = self.input_report.notify(conn, &pack, false).await {
+                crate::log::trace!("Failed to send report: {}", defmt::Debug2Format(&e));
             }
         }
     }

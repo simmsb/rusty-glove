@@ -1,18 +1,14 @@
-
 MEMORY
 {
   /* NOTE 1 K = 1 KiBi = 1024 bytes */
 
-  MBR                               : ORIGIN = 0x00000000, LENGTH = 4K
-  SOFTDEVICE                        : ORIGIN = 0x00001000, LENGTH = 152K
-  /* NRF52840 with Softdevice S140 7.3.0 */
-  FLASH                             : ORIGIN = ORIGIN(SOFTDEVICE) + LENGTH(SOFTDEVICE), LENGTH = 380K
-  CONFIG                            : ORIGIN = ORIGIN(FLASH) + LENGTH(FLASH), LENGTH = 48K
-  DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 384K
-  BOOTLOADER                        : ORIGIN = ORIGIN(DFU) + LENGTH(DFU), LENGTH = 24K
+  BOOTLOADER                        : ORIGIN = 0x00000000, LENGTH = 24K
   BOOTLOADER_STATE                  : ORIGIN = ORIGIN(BOOTLOADER) + LENGTH(BOOTLOADER), LENGTH = 4K
-  RAM                         (rwx) : ORIGIN = 0x20000000 + 0x10318, LENGTH = 256K - 0x10318
-  uicr_bootloader_start_address (r) : ORIGIN = 0x10001014, LENGTH = 0x4
+  FLASH                             : ORIGIN = ORIGIN(BOOTLOADER_STATE) + LENGTH(BOOTLOADER_STATE), LENGTH = 472K
+  CONFIG                            : ORIGIN = ORIGIN(FLASH) + LENGTH(FLASH), LENGTH = 48K
+  /* DFU must be one page larger than FLASH */
+  DFU                               : ORIGIN = ORIGIN(CONFIG) + LENGTH(CONFIG), LENGTH = 476K
+  RAM                         (rwx) : ORIGIN = 0x20000000, LENGTH = 256K
 }
 
 __bootloader_state_start = ORIGIN(BOOTLOADER_STATE);

@@ -1,7 +1,6 @@
 use embassy_executor::Spawner;
-use embassy_nrf::usb::{vbus_detect::SoftwareVbusDetect, Driver};
+use embassy_nrf::usb::{vbus_detect::HardwareVbusDetect, Driver};
 use embassy_sync::channel::TrySendError;
-use once_cell::sync::OnceCell;
 
 use shared::device_to_host::DeviceToHost;
 
@@ -15,12 +14,12 @@ pub mod hid;
 
 mod usb_driver {
     use super::GUESSED_OS;
-    use embassy_nrf::usb::{vbus_detect::SoftwareVbusDetect, Driver};
+    use embassy_nrf::usb::{vbus_detect::HardwareVbusDetect, Driver};
 
     pub type USBDriver = impl embassy_usb::driver::Driver<'static>;
 
     #[define_opaque(USBDriver)]
-    pub fn set_guesser(driver: Driver<'static, &'static SoftwareVbusDetect>) -> USBDriver {
+    pub fn set_guesser(driver: Driver<'static, HardwareVbusDetect>) -> USBDriver {
         let guesser = embassy_os_guess::OSGuesser::new(|guess| {
             let _ = GUESSED_OS.set(guess);
         });
@@ -30,8 +29,6 @@ mod usb_driver {
 
 pub use usb_driver::{set_guesser, USBDriver};
 
-pub static VBUS_DETECT: OnceCell<SoftwareVbusDetect> = OnceCell::new();
-
 static GUESSED_OS: once_cell::sync::OnceCell<embassy_os_guess::OS> =
     once_cell::sync::OnceCell::new();
 
@@ -39,7 +36,7 @@ pub fn guessed_host_os() -> Option<embassy_os_guess::OS> {
     GUESSED_OS.get().copied()
 }
 
-pub fn init(spawner: &Spawner, driver: Driver<'static, &'static SoftwareVbusDetect>) {
+pub fn init(spawner: &Spawner, driver: Driver<'static, HardwareVbusDetect>) {
     log::info!("Initializing usb");
     let driver = set_guesser(driver);
     let mut builder = device::init_usb(driver);
