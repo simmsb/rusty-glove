@@ -37,9 +37,16 @@ pub enum LinkEnd {
     Accepting,
 }
 
+/// How long a fragmented packet may take to arrive in full. Its fragments
+/// come within milliseconds of each other, and while one is incomplete it
+/// holds a reassembly slot, so this must be short or one lost fragment stops
+/// fragmented packets getting through for as long (the default is a minute).
+pub const REASSEMBLY_TIMEOUT: Duration = Duration::from_millis(500);
+
 /// Give the 802.15.4 interface `node`'s address, and the PAN and 6LoWPAN
 /// context the others use
 pub fn configure_radio_iface(iface: &Iface<'_>, node: Node) {
+    iface.stack().set_reassembly_timeout(REASSEMBLY_TIMEOUT);
     iface.set_pan_id(Some(Ieee802154Pan(PAN_ID)));
     iface
         .set_sixlowpan_address_context([SixlowpanAddressContext(PREFIX)])

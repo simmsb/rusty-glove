@@ -150,12 +150,12 @@ async fn link_task(stack: Stack<'static>) -> ! {
 
 pub async fn send_msg(msg: DeviceToDevice, priority: u8) {
     channel::COMMANDS_TO_OTHER_SIDE
-        .send(PrioritisedMessage { msg, priority })
+        .send(PrioritisedMessage::new(msg, priority))
         .await;
 }
 
 pub fn try_send_msg(msg: DeviceToDevice, priority: u8) -> Result<(), ()> {
     channel::COMMANDS_TO_OTHER_SIDE
-        .try_send(PrioritisedMessage { msg, priority })
+        .try_send(PrioritisedMessage::new(msg, priority))
         .map_err(|_e| ())
 }

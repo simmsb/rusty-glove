@@ -41,6 +41,17 @@ WRITE_TIMEOUT = 120
 SEND_BUFFER = 8 * 1024
 CHUNK = 1024
 
+# --slow: pieces small enough that each TCP segment to the half fits in one
+# radio frame, so nothing is fragmented. Firmware that keeps a lost fragment's
+# reassembly slot for a minute can't take a normal update.
+SLOW_CHUNK = 64
+SLOW_INTERVAL = 0.03
+# the half erases a flash page when it starts writing each 4KiB, which stops
+# everything (its radio too) for ~85ms, so leave a gap for it
+ERASE_SIZE = 4096
+DEVICE_CHUNK = 1024
+ERASE_PAUSE = 0.4
+
 
 class Progress:
     def __init__(self, total):
@@ -72,7 +83,24 @@ class Progress:
         sys.stderr.write("\n")
 
 
-def request(host, port, op, payload=b"", timeout=10.0, progress=False):
+def paced_send(s, data, header_len, bar):
+    sent = 0
+    while sent < len(data):
+        n = s.send(data[sent : sent + SLOW_CHUNK])
+        before, sent = sent, sent + n
+        if bar:
+            bar.update(sent)
+
+        # the half erases once it has the first chunk of each page
+        trigger = lambda off: (off - header_len - DEVICE_CHUNK) // ERASE_SIZE
+        if sent > header_len + DEVICE_CHUNK and trigger(sent) != trigger(before):
+            time.sleep(ERASE_PAUSE)
+        else:
+            time.sleep(SLOW_INTERVAL)
+    return sent
+
+
+def request(host, port, op, payload=b"", timeout=10.0, progress=False, slow=False):
     with socket.create_connection((host, port), timeout=10) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, SEND_BUFFER)
         s.settimeout(timeout)
@@ -81,6 +109,9 @@ def request(host, port, op, payload=b"", timeout=10.0, progress=False):
         bar = Progress(len(data)) if progress else None
         sent = 0
         try:
+            if slow:
+                # magic, op, then the length and CRC of a write
+                sent = paced_send(s, data, 5 + 8, bar)
             while sent < len(data):
                 sent += s.send(data[sent : sent + CHUNK])
                 if bar:
@@ -119,6 +150,11 @@ def main():
     parser.add_argument("--port", type=int, help="override the forwarded port")
     parser.add_argument("--no-confirm", action="store_true", help="leave the update unconfirmed")
     parser.add_argument(
+        "--slow",
+        action="store_true",
+        help="send without fragmenting, for halves whose firmware stalls on a lost fragment",
+    )
+    parser.add_argument(
         "--confirm-only",
         action="store_true",
         help="just confirm the running image, e.g. after updating some other way",
@@ -148,7 +184,13 @@ def main():
     header = struct.pack("<II", len(image), zlib.crc32(image))
     try:
         status = request(
-            args.host, port, OP_WRITE, header + image, timeout=WRITE_TIMEOUT, progress=True
+            args.host,
+            port,
+            OP_WRITE,
+            header + image,
+            timeout=WRITE_TIMEOUT,
+            progress=True,
+            slow=args.slow,
         )
     except OSError as e:
         sys.exit(f"Update failed: {e}")
