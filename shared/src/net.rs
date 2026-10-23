@@ -61,12 +61,16 @@ impl Node {
     }
 }
 
+/// The link between the halves, and the right half and the dongle, are UDP
+/// with the same port at both ends, see [`crate::reliable`]. Firmware updates
+/// are TCP.
 pub mod port {
-    /// On the right half, the left half connects to it
+    /// Between the halves
     pub const INTERBOARD: u16 = 7100;
-    /// On the dongle, the right half connects to it to send keyboard reports
+    /// Between the right half and the dongle, keyboard reports and what OS
+    /// the host is
     pub const KEYBOARD: u16 = 7200;
-    /// On each half, see [`super::dfu`]
+    /// On each half, and on the dongle's USB side, see [`super::dfu`]
     pub const DFU: u16 = 7300;
     /// On the dongle's USB side, forwarded to [`DFU`] on the left half
     pub const DFU_LEFT: u16 = 7301;
@@ -90,6 +94,12 @@ pub mod usb {
     pub const HOST_MAC: [u8; 6] = [0x02, 0x67, 0x6c, 0x76, 0x00, 0x02];
 }
 
+/// The buffer a [`crate::reliable`] link sending messages of up to `tx` bytes
+/// and receiving up to `rx` bytes needs
+pub const fn max_packet_len(tx: usize, rx: usize) -> usize {
+    (if tx > rx { tx } else { rx }) + crate::reliable::HEADER_LEN
+}
+
 /// Size of a packed `NKROBootKeyboardReport`
 pub const KEYBOARD_REPORT_LEN: usize = 25;
 
@@ -100,9 +110,6 @@ pub const KEYBOARD_REPORT_LEN: usize = 25;
 pub enum KeyboardToDongle {
     /// A packed keyboard report, the dongle passes this straight to the host
     Report([u8; KEYBOARD_REPORT_LEN]),
-    /// Sent when there's been nothing else to send for a while, so the dongle
-    /// knows we're still here
-    Heartbeat,
 }
 
 #[derive(

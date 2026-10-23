@@ -121,7 +121,7 @@ pub async fn main(spawner: Spawner) {
                                  Mutex::new(flash::MkSend(BlockingAsync::new(Nvmc::new(p.NVMC))))
     );
 
-    let dfuconfig = DfuConfig::new(flash_mutex);
+    let dfuconfig = DfuConfig::from_linkerfile(flash_mutex);
 
     spawner.spawn(watchdog_task().unwrap());
 

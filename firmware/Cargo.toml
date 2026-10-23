@@ -46,7 +46,7 @@ embassy-executor = { version = "0.10.0", features = [
   "executor-interrupt",
 ] }
 embassy-futures = { version = "0.1.2" }
-embassy-net = { version = "0.9.1", features = ["tcp", "tcp-listener", "medium-ieee802154", "sixlowpan-fragmentation", "sixlowpan-reassembly", "icmp-ping-reply"] }
+embassy-net = { version = "0.9.1", features = ["tcp", "tcp-listener", "udp", "medium-ieee802154", "sixlowpan-fragmentation", "sixlowpan-reassembly", "icmp-ping-reply"] }
 embassy-nrf = { version = "0.11.0", features = [
   "nrf52840",
   "time-driver-rtc1",

@@ -420,6 +420,7 @@ dependencies = [
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
+ "embassy-embedded-hal",
  "embassy-executor",
  "embassy-futures",
  "embassy-net",
@@ -1005,7 +1006,11 @@ dependencies = [
 name = "glove-net"
 version = "0.1.0"
 dependencies = [
+ "cortex-m",
+ "crc32fast",
  "defmt",
+ "embassy-boot",
+ "embassy-embedded-hal",
  "embassy-futures",
  "embassy-net",
  "embassy-net-driver-channel",
@@ -1013,6 +1018,7 @@ dependencies = [
  "embassy-sync",
  "embassy-time",
  "embedded-io-async 0.7.0",
+ "embedded-storage-async",
  "heapless 0.9.3",
  "portable-atomic",
  "postcard",

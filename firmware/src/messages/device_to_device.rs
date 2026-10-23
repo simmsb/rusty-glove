@@ -24,7 +24,4 @@ pub enum DeviceToDevice {
     KeyRelease(u8, u8),
     SetAnimation(AnimationSync),
     SyncAnimation(AnimationSync),
-    /// Sent by the left side when it's had nothing else to send for a while,
-    /// so the right side knows it's still there
-    Heartbeat,
 }

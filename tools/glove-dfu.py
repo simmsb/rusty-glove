@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Update a half's firmware over the network, through the dongle.
+"""Update a half's or the dongle's firmware over the network.
 
-The dongle hands the host an address over USB ethernet, and forwards a port
-for each half to that half's DFU service. See `shared::net::dfu` for the
-protocol.
+The dongle hands the host an address over USB ethernet, takes its own updates
+there, and forwards a port for each half to that half's DFU service. See
+`shared::net::dfu` for the protocol.
 
-After the half reboots into the new image this confirms it. A half that
-can't be reached to confirm rolls back the next time it resets, and refuses
-further updates until then.
+After the device reboots into the new image this confirms it. A device that
+can't be reached to confirm rolls back the next time it resets (for the
+dongle, unplug it and plug it back in), and refuses further updates until then.
 """
 
 import argparse
@@ -30,9 +30,10 @@ STATUS = {
     5: "the running image needs confirming first, use --confirm-only",
 }
 
-PORTS = {"left": 7301, "right": 7302}
+PORTS = {"left": 7301, "right": 7302, "dongle": 7300}
 
-# how long a half has to come back after rebooting into the update
+# how long a device has to come back after rebooting into the update, the
+# dongle has to come back over USB and hand the host an address again
 CONFIRM_DEADLINE = 90
 # how long the half may go without taking any more of the image, or without
 # answering once it has it all (it reads the image back to check it)
@@ -180,7 +181,8 @@ def main():
     if len(image) < 8 or not 0x2000_0000 <= struct.unpack_from("<I", image)[0] <= 0x2004_0000:
         sys.exit(f"{args.image} doesn't look like a flat binary of the application")
 
-    print(f"Sending {len(image)} bytes to the {args.side} half")
+    name = "the dongle" if args.side == "dongle" else f"the {args.side} half"
+    print(f"Sending {len(image)} bytes to {name}")
     header = struct.pack("<II", len(image), zlib.crc32(image))
     try:
         status = request(

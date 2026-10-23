@@ -25,9 +25,10 @@ both: left right
 dongle:
   env DEFMT_LOG="off" cargo strip -p dongle --release --bin dongle --no-default-features --features reboot_on_panic -- --strip-all -o target/dongle.elf
 
+# needs the bootloader on it already (`just bootloader` with the probe on the dongle)
 dongle_flash: dongle
-  probe-rs download --chip nRF52840_xxAA --protocol swd target/dongle.elf
-  probe-rs reset --chip nRF52840_xxAA --protocol swd
+  probe-rs download --chip nRF52840_xxAA --protocol swd --speed 1600 target/dongle.elf
+  probe-rs reset --chip nRF52840_xxAA --protocol swd --speed 1600
 
 bootloader:
   cargo run -p bootloader --release --bin bootloader
@@ -51,7 +52,13 @@ left_bin:
 right_bin:
   env DEFMT_LOG="off" cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic -- -O binary target/right.bin
 
-# update a half through the dongle
+dongle_bin:
+  env DEFMT_LOG="off" cargo objcopy -p dongle --release --bin dongle --no-default-features --features reboot_on_panic -- -O binary target/dongle.bin
+
+# update a half through the dongle, or the dongle itself
+dongle_net: dongle_bin
+  tools/glove-dfu.py dongle target/dongle.bin
+
 left_net: left_bin
   tools/glove-dfu.py left target/left.bin
 
@@ -64,6 +71,9 @@ left_confirm:
 
 right_confirm:
   tools/glove-dfu.py right --confirm-only
+
+dongle_confirm:
+  tools/glove-dfu.py dongle --confirm-only
 
 # left_dfu:
 #   env DEFMT_LOG="" cargo objcopy --release -p rusty-glove --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- -O ihex target/left.hex

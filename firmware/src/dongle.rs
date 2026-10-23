@@ -1,16 +1,19 @@
 //! The link to the USB dongle, which hands our keyboard reports to the host.
-//! It's a TCP connection the right half opens to the dongle.
+//! It's reliable ordered messages over UDP, see [`glove_net::link`].
 
 use embassy_executor::Spawner;
-use embassy_futures::select::{select, Either};
-use embassy_net::{tcp::TcpSocket, Stack};
+use embassy_futures::{
+    join::join3,
+    select::{select, Either},
+};
+use embassy_net::{udp::UdpSocket, Stack};
 use embassy_os_guess::OS;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
-use embassy_time::{with_timeout, Duration, Timer};
-use glove_net::framed::{write_msg, MsgReader};
+use glove_net::link::Link;
 use packed_struct::PackedStruct;
 use portable_atomic::{AtomicU8, Ordering};
 use postcard::experimental::max_size::MaxSize;
+use rand::RngExt;
 use shared::net::{
     port, DongleToKeyboard, HostOs, KeyboardToDongle, Node, KEYBOARD_REPORT_LEN,
 };
@@ -21,10 +24,10 @@ const _: () = assert!(
         == KEYBOARD_REPORT_LEN
 );
 
-const TX_FRAME_LEN: usize = KeyboardToDongle::POSTCARD_MAX_SIZE + 2;
-const RX_FRAME_LEN: usize = DongleToKeyboard::POSTCARD_MAX_SIZE + 2;
-
-const RECONNECT_DELAY: Duration = Duration::from_secs(1);
+const PACKET_LEN: usize = shared::net::max_packet_len(
+    KeyboardToDongle::POSTCARD_MAX_SIZE,
+    DongleToKeyboard::POSTCARD_MAX_SIZE,
+);
 
 static KEYBOARD_REPORTS: Channel<ThreadModeRawMutex, NKROBootKeyboardReport, 2> = Channel::new();
 
@@ -59,74 +62,66 @@ fn set_host_os(os: HostOs) {
 
 #[embassy_executor::task]
 async fn link_task(stack: Stack<'static>) -> ! {
-    let mut rx_buf = [0u8; 256];
-    let mut tx_buf = [0u8; 512];
+    let peer = (Node::Dongle.link_local(), port::KEYBOARD);
+    let mut socket = UdpSocket::new(stack).unwrap();
+    socket.bind(port::KEYBOARD, peer).unwrap();
+    let link = Link::<KeyboardToDongle, DongleToKeyboard, PACKET_LEN, 2>::new(
+        socket,
+        peer,
+        crate::rng::MyRng.random(),
+    );
 
-    // reports are snapshots of what's held, so we only need to keep the
-    // latest one while we're not connected. Starting with an empty one clears
-    // anything the dongle had held from before we rebooted.
-    let mut latest = NKROBootKeyboardReport::default();
-
-    loop {
-        let mut socket = TcpSocket::new(stack, &mut rx_buf, &mut tx_buf).unwrap();
-        glove_net::tune_link_socket(&mut socket, glove_net::LinkEnd::Connecting);
-
-        let connect = socket.connect((Node::Dongle.link_local(), port::KEYBOARD));
-        let track = async {
-            loop {
-                latest = KEYBOARD_REPORTS.receive().await;
-            }
-        };
-
-        match select(connect, track).await {
-            Either::First(Ok(())) => {}
-            Either::First(Err(_)) => {
-                Timer::after(RECONNECT_DELAY).await;
-                continue;
+    let rx = async {
+        loop {
+            match link.recv().await {
+                DongleToKeyboard::HostOs(os) => set_host_os(os),
             }
         }
+    };
 
-        crate::log::info!("Connected to the dongle");
+    let tx = async {
+        // reports are snapshots of what's held, so we only need to keep the
+        // latest one while the dongle's away. Starting with an empty one
+        // clears anything the dongle had held from before we rebooted.
+        let mut latest = NKROBootKeyboardReport::default();
 
-        let (mut reader, mut writer) = socket.split();
-
-        let tx = async {
-            let mut msg = KeyboardToDongle::Report(latest.pack().unwrap());
-            loop {
-                if let Err(e) = write_msg::<TX_FRAME_LEN, _, _>(&mut writer, &msg).await {
-                    return e;
+        loop {
+            let track = async {
+                loop {
+                    latest = KEYBOARD_REPORTS.receive().await;
                 }
+            };
+            let session = match select(link.wait_up(), track).await {
+                Either::First(session) => session,
+            };
+            crate::log::info!("Connected to the dongle");
 
-                msg = match select(KEYBOARD_REPORTS.receive(), Timer::after(glove_net::HEARTBEAT))
-                    .await
-                {
-                    Either::First(report) => {
-                        latest = report;
-                        KeyboardToDongle::Report(report.pack().unwrap())
+            let send = async {
+                let mut report = latest;
+                loop {
+                    match link
+                        .send(KeyboardToDongle::Report(report.pack().unwrap()))
+                        .await
+                    {
+                        Ok(()) => report = KEYBOARD_REPORTS.receive().await,
+                        // try again, with a newer one if there is one
+                        Err(_) => {
+                            crate::log::info!("Couldn't get a report to the dongle");
+                            if let Ok(newer) = KEYBOARD_REPORTS.try_receive() {
+                                report = newer;
+                            }
+                        }
                     }
-                    Either::Second(()) => KeyboardToDongle::Heartbeat,
-                };
-            }
-        };
-
-        let rx = async {
-            let mut msgs = MsgReader::<RX_FRAME_LEN>::new();
-            loop {
-                match msgs.read::<_, DongleToKeyboard>(&mut reader).await {
-                    Ok(DongleToKeyboard::HostOs(os)) => set_host_os(os),
-                    Err(e) => return e,
+                    latest = report;
                 }
-            }
-        };
-
-        match select(tx, rx).await {
-            Either::First(e) => crate::log::info!("Dongle went away: {}", e),
-            Either::Second(e) => crate::log::info!("Dongle went away: {}", e),
+            };
+            select(link.wait_down(session), send).await;
+            crate::log::info!("Dongle went away");
         }
+    };
 
-        socket.abort();
-        _ = with_timeout(Duration::from_secs(1), socket.flush()).await;
-    }
+    join3(link.run(), rx, tx).await;
+    unreachable!()
 }
 
 pub fn init(spawner: &Spawner, stack: Stack<'static>) {

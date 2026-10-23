@@ -6,4 +6,5 @@ pub mod hid;
 pub mod host_to_device;
 pub mod mac;
 pub mod net;
+pub mod reliable;
 pub mod side;

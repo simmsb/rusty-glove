@@ -16,25 +16,29 @@ using the Embassy framework.
 
 ## Wireless
 
-The halves and a USB dongle share an IPv6 network, 6LoWPAN over IEEE 802.15.4,
-and talk to each other over TCP. Addresses, ports and the radio settings live
-in `shared/src/net.rs`.
+The halves and a USB dongle share an IPv6 network, 6LoWPAN over IEEE 802.15.4.
+Key events between the halves, and keyboard reports from the right half to the
+dongle, go over UDP: each message is acked, and resent until it is, before the
+next one goes (`shared/src/reliable.rs`). Firmware updates go over TCP.
+Addresses, ports and the radio settings live in `shared/src/net.rs`.
 
-| node   | address            | listens on                          |
-|--------|--------------------|-------------------------------------|
-| left   | `fd67:6c76:0:1::1` | 7300 (DFU)                          |
-| right  | `fd67:6c76:0:1::2` | 7100 (the left half), 7300 (DFU)    |
-| dongle | `fd67:6c76:0:1::3` | 7200 (keyboard reports)             |
+| node   | address            | UDP                                 | TCP        |
+|--------|--------------------|-------------------------------------|------------|
+| left   | `fd67:6c76:0:1::1` | 7100 (the right half)               | 7300 (DFU) |
+| right  | `fd67:6c76:0:1::2` | 7100 (the left half), 7200 (dongle) | 7300 (DFU) |
+| dongle | `fd67:6c76:0:1::3` | 7200 (the right half)               | 7300 (DFU), 7301, 7302 on USB |
 
-The dongle is any nRF52840, flashed over SWD (`just dongle_flash`). Over USB
-it's a keyboard, passing on the right half's reports, and an ethernet adapter.
-It hands the host an address in `10.42.0.0/24` over DHCP (without a default
-route), and forwards `10.42.0.1:7301` and `10.42.0.1:7302` to the left and
-right halves' DFU ports. The network stack can't route, so those forwarded
-ports are the only way through.
+The dongle is any nRF52840 running the same bootloader as the halves. Set one
+up over SWD: `probe-rs erase --chip nRF52840_xxAA`, then `just bootloader`
+and `just dongle_flash`. Over USB it's a keyboard, passing on the right half's
+reports, and an ethernet adapter. It hands the host an address in
+`10.42.0.0/24` over DHCP (without a default route), takes its own updates on
+`10.42.0.1:7300`, and forwards `10.42.0.1:7301` and `10.42.0.1:7302` to the
+left and right halves' DFU ports. The network stack can't route, so those
+forwarded ports are the only way through.
 
-Update a half with `just left_net` or `just right_net`, which run
-`tools/glove-dfu.py`. A half that boots into an update rolls it back on its
+Update with `just left_net`, `just right_net` or `just dongle_net`, which run
+`tools/glove-dfu.py`. A device that boots into an update rolls it back on its
 next reset unless the script reaches it again to confirm it.
 
 ## Building

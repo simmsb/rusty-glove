@@ -5,7 +5,10 @@
 //! The dongle is the keyboard's way onto a computer. Over USB it's a HID
 //! keyboard, passing on the reports the right half sends it over the 802.15.4
 //! network, and an ethernet adapter, which hands the host an address over
-//! DHCP and forwards the halves' firmware update ports to it.
+//! DHCP, takes firmware updates for itself, and forwards the halves' firmware
+//! update ports to it.
+//!
+//! It runs under the same bootloader as the halves, see `memory.x`.
 
 use defmt_rtt as _;
 #[cfg(not(feature = "reboot_on_panic"))]
@@ -25,6 +28,7 @@ use embassy_nrf::{
 };
 use shared::net::{port, Node};
 
+mod dfu;
 mod keyboard;
 mod net;
 mod proxy;
@@ -58,15 +62,19 @@ async fn main(spawner: Spawner) {
 
     let p = embassy_nrf::init(config);
 
+    spawner.spawn(dfu::watchdog_task().unwrap());
+
     embassy_nrf::interrupt::RADIO.set_priority(embassy_nrf::interrupt::Priority::P1);
 
     defmt::info!("Dongle starting");
 
-    let seed = {
+    let (seed, epoch) = {
         let mut rng = Rng::new(p.RNG, Irqs);
         let mut seed = [0; 8];
         rng.fill_bytes(&mut seed).await;
-        u64::from_le_bytes(seed)
+        let mut epoch = [0; 4];
+        rng.fill_bytes(&mut epoch).await;
+        (u64::from_le_bytes(seed), u32::from_le_bytes(epoch))
     };
 
     let usb_driver = Driver::new(p.USBD, Irqs, HardwareVbusDetect::new(Irqs));
@@ -74,7 +82,8 @@ async fn main(spawner: Spawner) {
 
     let stack = net::init(&spawner, Radio::new(p.RADIO, Irqs), ethernet, seed);
 
-    spawner.spawn(keyboard::keyboard_task(stack).unwrap());
+    spawner.spawn(dfu::dfu_task(stack, p.NVMC).unwrap());
+    spawner.spawn(keyboard::keyboard_task(stack, epoch).unwrap());
     spawner.spawn(proxy::proxy_task(stack, port::DFU_LEFT, Node::Left).unwrap());
     spawner.spawn(proxy::proxy_task(stack, port::DFU_RIGHT, Node::Right).unwrap());
 }
