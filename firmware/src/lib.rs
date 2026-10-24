@@ -42,9 +42,11 @@ pub mod messages;
 mod metrics;
 mod net;
 pub mod pins;
+mod polls;
 pub mod rgb;
 pub mod rng;
 pub mod side;
+mod status;
 mod sync;
 pub mod usb;
 pub mod utils;
@@ -142,6 +144,7 @@ pub async fn main(spawner: Spawner) {
 
     let stack = net::init(&spawner, Radio::new(p.RADIO, Irqs), net_seed);
     dfu::init(&spawner, stack, dfuconfig).await;
+    status::init(&spawner, stack);
     interboard::init(&spawner, stack);
     if side::is_master() {
         dongle::init(&spawner, stack);

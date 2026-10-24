@@ -15,7 +15,7 @@ use embassy_nrf::{
     interrupt::{InterruptExt, Priority},
     radio::ieee802154::Radio,
 };
-use glove_net::radio;
+use glove_net::{pool::CountingPool, radio};
 use shared::net::{usb as usb_net, Node};
 
 use crate::{singleton, usb::EthernetDevice};
@@ -57,6 +57,14 @@ async fn neighbors_task(stack: Stack<'static>, iface: Iface<'static>) -> ! {
     glove_net::keep_neighbors(stack, &iface, Node::Dongle).await
 }
 
+// fragmentation, reassembly and the queues of both drivers all hold buffers
+static POOL: CountingPool<StaticPool<1514, 32>> = CountingPool::new(StaticPool::new());
+
+/// How many times the network stack wanted a packet buffer and had none
+pub fn pool_exhausted() -> u32 {
+    POOL.exhausted()
+}
+
 pub fn init(
     spawner: &Spawner,
     radio: Radio<'static>,
@@ -76,9 +84,6 @@ pub fn init(
     spawner.spawn(bridge_task(bridge).unwrap());
     spawner.spawn(stats_task().unwrap());
 
-    // fragmentation, reassembly and the queues of both drivers all hold
-    // buffers
-    static POOL: StaticPool<1514, 32> = StaticPool::new();
     let (stack, runner) = Stack::new(
         singleton!(StackStorage<'static>, StackStorage::new()),
         &POOL,

@@ -7,7 +7,7 @@ use embassy_nrf::{
     interrupt::{InterruptExt, Priority},
     radio::ieee802154::Radio,
 };
-use glove_net::radio;
+use glove_net::{pool::CountingPool, radio};
 use shared::{net::Node, side::KeyboardSide};
 
 use crate::utils::singleton;
@@ -56,6 +56,15 @@ async fn neighbors_task(stack: Stack<'static>, iface: Iface<'static>) -> ! {
     glove_net::keep_neighbors(stack, &iface, this_node()).await
 }
 
+// a fragmented packet waiting to go out, one being reassembled, and both
+// directions of the radio driver all hold buffers
+static POOL: CountingPool<StaticPool<1514, 24>> = CountingPool::new(StaticPool::new());
+
+/// How many times the network stack wanted a packet buffer and had none
+pub fn pool_exhausted() -> u32 {
+    POOL.exhausted()
+}
+
 pub fn init(spawner: &Spawner, radio: Radio<'static>, seed: u64) -> Stack<'static> {
     crate::log::info!("Initialising network as {}", this_node());
 
@@ -72,12 +81,10 @@ pub fn init(spawner: &Spawner, radio: Radio<'static>, seed: u64) -> Stack<'stati
     spawner.spawn(bridge_task(bridge).unwrap());
     spawner.spawn(stats_task().unwrap());
 
-    // a fragmented packet waiting to go out, one being reassembled, and both
-    // directions of the radio driver all hold buffers
-    static POOL: StaticPool<1514, 24> = StaticPool::new();
+    let pool = &POOL;
     let (stack, runner) = Stack::new(
         singleton!(StackStorage<'static>, StackStorage::new()),
-        &POOL,
+        pool,
         seed,
     );
 

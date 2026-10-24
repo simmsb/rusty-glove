@@ -9,13 +9,13 @@ use embassy_futures::{
 use embassy_net::{udp::UdpSocket, Stack};
 use embassy_os_guess::OS;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, channel::Channel};
-use glove_net::link::Link;
+use glove_net::link::{Link, LinkStats};
 use packed_struct::PackedStruct;
 use portable_atomic::{AtomicU8, Ordering};
 use postcard::experimental::max_size::MaxSize;
 use rand::RngExt;
 use shared::net::{
-    port, DongleToKeyboard, HostOs, KeyboardToDongle, Node, KEYBOARD_REPORT_LEN,
+    port, DongleToKeyboard, HostOs, KeyboardToDongle, Node, KEYBOARD_BATCH, KEYBOARD_REPORT_LEN,
 };
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
 
@@ -24,12 +24,28 @@ const _: () = assert!(
         == KEYBOARD_REPORT_LEN
 );
 
-const PACKET_LEN: usize = shared::net::max_packet_len(
+const PACKET_LEN: usize = shared::net::link_packet_len(
     KeyboardToDongle::POSTCARD_MAX_SIZE,
     DongleToKeyboard::POSTCARD_MAX_SIZE,
+    KEYBOARD_BATCH,
 );
+/// Room for a batch to arrive while the last is still being taken
+const INBOX: usize = 2 * KEYBOARD_BATCH;
+// a full batch goes in one radio frame, see `shared::reliable`'s tests
+const _: () = assert!(PACKET_LEN <= 90);
 
-static KEYBOARD_REPORTS: Channel<ThreadModeRawMutex, NKROBootKeyboardReport, 2> = Channel::new();
+/// Every report matters, a press and release that only show up in reports
+/// that are dropped never make it to the host. While this is full the key
+/// processing waits, so it must ride out the link being slow for a bit.
+static KEYBOARD_REPORTS: Channel<ThreadModeRawMutex, NKROBootKeyboardReport, 32> =
+    Channel::new();
+
+pub static LINK_STATS: LinkStats = LinkStats::new();
+
+/// How many reports are waiting to go to the dongle
+pub fn queued() -> usize {
+    KEYBOARD_REPORTS.len()
+}
 
 pub async fn publish_keyboard_report(report: NKROBootKeyboardReport) {
     crate::log::debug!("kb: {}", defmt::Debug2Format(&report));
@@ -65,10 +81,11 @@ async fn link_task(stack: Stack<'static>) -> ! {
     let peer = (Node::Dongle.link_local(), port::KEYBOARD);
     let mut socket = UdpSocket::new(stack).unwrap();
     socket.bind(port::KEYBOARD, peer).unwrap();
-    let link = Link::<KeyboardToDongle, DongleToKeyboard, PACKET_LEN, 2>::new(
+    let link = Link::<KeyboardToDongle, DongleToKeyboard, PACKET_LEN, INBOX>::new(
         socket,
         peer,
         crate::rng::MyRng.random(),
+        &LINK_STATS,
     );
 
     let rx = async {
@@ -97,22 +114,28 @@ async fn link_task(stack: Stack<'static>) -> ! {
             crate::log::info!("Connected to the dongle");
 
             let send = async {
-                let mut report = latest;
+                let mut reports = heapless::Vec::<_, KEYBOARD_BATCH>::new();
+                _ = reports.push(latest);
                 loop {
-                    match link
-                        .send(KeyboardToDongle::Report(report.pack().unwrap()))
-                        .await
-                    {
-                        Ok(()) => report = KEYBOARD_REPORTS.receive().await,
-                        // try again, with a newer one if there is one
-                        Err(_) => {
-                            crate::log::info!("Couldn't get a report to the dongle");
-                            if let Ok(newer) = KEYBOARD_REPORTS.try_receive() {
-                                report = newer;
-                            }
+                    let msgs = heapless::Vec::<_, KEYBOARD_BATCH>::from_iter(
+                        reports
+                            .iter()
+                            .map(|r| KeyboardToDongle::Report(r.pack().unwrap())),
+                    );
+                    match link.send(&msgs).await {
+                        Ok(()) => {
+                            reports = glove_net::link::batch(KEYBOARD_REPORTS.receive(), || {
+                                KEYBOARD_REPORTS.try_receive().ok()
+                            })
+                            .await;
+                            // what to start with if the dongle goes away
+                            // before this gets there
+                            latest = *reports.last().unwrap();
                         }
+                        // try the same ones again, skipping one could lose
+                        // a key press
+                        Err(_) => crate::log::info!("Still trying to get reports to the dongle"),
                     }
-                    latest = report;
                 }
             };
             select(link.wait_down(session), send).await;

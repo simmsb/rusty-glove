@@ -32,6 +32,7 @@ mod dfu;
 mod keyboard;
 mod net;
 mod proxy;
+mod status;
 mod usb;
 
 bind_interrupts!(struct Irqs {
@@ -84,6 +85,13 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(dfu::dfu_task(stack, p.NVMC).unwrap());
     spawner.spawn(keyboard::keyboard_task(stack, epoch).unwrap());
-    spawner.spawn(proxy::proxy_task(stack, port::DFU_LEFT, Node::Left).unwrap());
-    spawner.spawn(proxy::proxy_task(stack, port::DFU_RIGHT, Node::Right).unwrap());
+    spawner.spawn(status::status_task(stack).unwrap());
+    for (listen, node, target) in [
+        (port::DFU_LEFT, Node::Left, port::DFU),
+        (port::DFU_RIGHT, Node::Right, port::DFU),
+        (port::STATUS_LEFT, Node::Left, port::STATUS),
+        (port::STATUS_RIGHT, Node::Right, port::STATUS),
+    ] {
+        spawner.spawn(proxy::proxy_task(stack, listen, node, target).unwrap());
+    }
 }

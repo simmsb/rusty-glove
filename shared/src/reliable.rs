@@ -1,11 +1,13 @@
 //! Reliable, ordered messages over datagrams, for the links between the
 //! halves and the dongle
 //!
-//! Stop and wait: each message has a sequence number, the receiver acks it
-//! with that number, and the sender resends until it's acked before it moves
-//! on to the next message. The receiver passes on a message only if its
-//! sequence number differs from the last one it passed on, so a resend whose
-//! first copy got through (but whose ack didn't) isn't seen twice.
+//! Stop and wait: each packet carries a batch of messages and a sequence
+//! number, the receiver acks it with that number, and the sender resends
+//! until it's acked before it moves on to the next batch. Batching whatever
+//! has queued up while waiting keeps up with bursts, one message per round
+//! trip doesn't. The receiver passes on a batch only if its sequence number
+//! differs from the last one it passed on, so a resend whose first copy got
+//! through (but whose ack didn't) isn't seen twice.
 //!
 //! Every packet carries the sender's epoch, picked at random when it boots, so
 //! the other end notices it rebooted even if that was quicker than the link
@@ -16,7 +18,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Packet<T> {
-    Data { epoch: u32, seq: u16, msg: T },
+    /// `msgs` is a sequence of messages: sent as a slice, received as a
+    /// `heapless::Vec` no shorter than the sender's batches
+    Data { epoch: u32, seq: u16, msgs: T },
     /// The receiver of [`Packet::Data`] sends this back with its `seq`, and
     /// its own epoch
     Ack { epoch: u32, seq: u16 },
@@ -35,9 +39,17 @@ impl<T> Packet<T> {
     }
 }
 
-/// The most a packet adds to the encoded message: the variant, and the epoch
-/// and sequence number as varints
+/// The most a packet adds to the encoded messages: the variant, and the
+/// epoch and sequence number as varints
 pub const HEADER_LEN: usize = 1 + 5 + 3;
+
+/// The buffer needed for packets of up to `batch` messages of up to
+/// `max_msg` bytes each, `batch` must be under 128
+pub const fn packet_len(max_msg: usize, batch: usize) -> usize {
+    assert!(batch < 128);
+    // and the batch length as a varint
+    HEADER_LEN + 1 + batch * max_msg
+}
 
 /// What the receiving end knows about the sending end
 #[derive(Default)]
@@ -110,12 +122,42 @@ mod tests {
     }
 
     #[test]
+    fn batches() {
+        let msgs = [[0xffu8; 26]; 3];
+        let sent = Packet::Data {
+            epoch: u32::MAX,
+            seq: u16::MAX,
+            msgs: &msgs[..],
+        };
+
+        let mut buf = [0u8; 128];
+        let encoded = postcard::to_slice(&sent, &mut buf).unwrap();
+        assert!(encoded.len() <= packet_len(26, 3));
+        // a full batch of keyboard reports must fit a radio frame unfragmented
+        assert!(packet_len(26, 3) <= 90);
+
+        let received =
+            postcard::from_bytes::<Packet<heapless::Vec<[u8; 26], 3>>>(encoded).unwrap();
+        assert_eq!(
+            received,
+            Packet::Data {
+                epoch: u32::MAX,
+                seq: u16::MAX,
+                msgs: heapless::Vec::from_slice(&msgs).unwrap(),
+            }
+        );
+
+        // a receiver expecting smaller batches can't take it
+        assert!(postcard::from_bytes::<Packet<heapless::Vec<[u8; 26], 2>>>(encoded).is_err());
+    }
+
+    #[test]
     fn header_len() {
         let packets = [
             Packet::Data {
                 epoch: u32::MAX,
                 seq: u16::MAX,
-                msg: [0xffu8; 25],
+                msgs: [0xffu8; 25],
             },
             Packet::Ack {
                 epoch: u32::MAX,

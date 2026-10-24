@@ -9,17 +9,27 @@ use embassy_executor::Spawner;
 use embassy_futures::join::join4;
 use embassy_net::{udp::UdpSocket, Stack};
 use embassy_time::{Duration, Timer};
-use glove_net::link::Link;
+use glove_net::link::{Link, LinkStats};
 use postcard::experimental::max_size::MaxSize;
 use rand::RngExt;
-use shared::net::{port, Node};
+use shared::net::{port, Node, INTERBOARD_BATCH};
 
 pub mod channel;
 
 /// Whether we're connected to the other side
 pub static CONNECTED: crate::sync::Watch<bool> = crate::sync::Watch::new(false);
 
-const PACKET_LEN: usize = DeviceToDevice::POSTCARD_MAX_SIZE + shared::reliable::HEADER_LEN;
+pub static LINK_STATS: LinkStats = LinkStats::new();
+
+/// How many messages are waiting to go to the other side
+pub fn queued() -> usize {
+    COMMANDS_TO_OTHER_SIDE.len()
+}
+
+const PACKET_LEN: usize =
+    shared::reliable::packet_len(DeviceToDevice::POSTCARD_MAX_SIZE, INTERBOARD_BATCH);
+/// Room for a batch to arrive while the last is still being taken
+const INBOX: usize = 2 * INTERBOARD_BATCH;
 
 pub fn init(spawner: &Spawner, stack: Stack<'static>) {
     spawner.spawn(link_task(stack).unwrap());
@@ -39,7 +49,12 @@ async fn link_task(stack: Stack<'static>) -> ! {
     let mut socket = UdpSocket::new(stack).unwrap();
     // replies go out from our link-local address, as the peer's is
     socket.bind(port::INTERBOARD, peer).unwrap();
-    let link = Link::<DeviceToDevice, DeviceToDevice, PACKET_LEN, 4>::new(socket, peer, crate::rng::MyRng.random());
+    let link = Link::<DeviceToDevice, DeviceToDevice, PACKET_LEN, INBOX>::new(
+        socket,
+        peer,
+        crate::rng::MyRng.random(),
+        &LINK_STATS,
+    );
 
     let monitor = async {
         loop {
@@ -68,15 +83,26 @@ async fn link_task(stack: Stack<'static>) -> ! {
     // nothing waiting to send to it gets stuck
     let tx = async {
         loop {
-            let msg = COMMANDS_TO_OTHER_SIDE.receive().await.msg;
-            if !link.is_up() {
-                crate::log::trace!("Not connected, dropping: {:?}", msg);
-                continue;
-            }
+            let batch = glove_net::link::batch::<_, INTERBOARD_BATCH>(
+                async { COMMANDS_TO_OTHER_SIDE.receive().await.msg },
+                || COMMANDS_TO_OTHER_SIDE.try_receive().ok().map(|m| m.msg),
+            )
+            .await;
 
-            crate::log::trace!("Sending message: {:?}", msg);
-            if link.send(msg).await.is_err() {
-                crate::log::info!("Couldn't get a message to the other side");
+            // keep at it while the link's up: a lost press misses a key press
+            // and a lost release sticks a key. Once it's down the other side
+            // lets go of what we held.
+            loop {
+                if !link.is_up() {
+                    crate::log::trace!("Not connected, dropping: {:?}", batch);
+                    break;
+                }
+
+                crate::log::trace!("Sending messages: {:?}", batch);
+                match link.send(&batch).await {
+                    Ok(()) => break,
+                    Err(_) => crate::log::info!("Still trying to get messages to the other side"),
+                }
             }
         }
     };

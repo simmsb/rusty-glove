@@ -11,7 +11,7 @@ pub static COMMANDS_TO_OTHER_SIDE: PriorityChannel<
     ThreadModeRawMutex,
     PrioritisedMessage<DeviceToDevice>,
     embassy_sync::priority_channel::Min,
-    16,
+    32,
 > = PriorityChannel::new();
 
 /// A message and its priority, lower goes first

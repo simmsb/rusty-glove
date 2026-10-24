@@ -24,9 +24,9 @@ Addresses, ports and the radio settings live in `shared/src/net.rs`.
 
 | node   | address            | UDP                                 | TCP        |
 |--------|--------------------|-------------------------------------|------------|
-| left   | `fd67:6c76:0:1::1` | 7100 (the right half)               | 7300 (DFU) |
-| right  | `fd67:6c76:0:1::2` | 7100 (the left half), 7200 (dongle) | 7300 (DFU) |
-| dongle | `fd67:6c76:0:1::3` | 7200 (the right half)               | 7300 (DFU), 7301, 7302 on USB |
+| left   | `fd67:6c76:0:1::1` | 7100 (the right half)               | 7300 (DFU), 7400 (status) |
+| right  | `fd67:6c76:0:1::2` | 7100 (the left half), 7200 (dongle) | 7300 (DFU), 7400 (status) |
+| dongle | `fd67:6c76:0:1::3` | 7200 (the right half)               | 7300 (DFU), 7400 (status), 7301, 7302, 7401, 7402 on USB |
 
 The dongle is any nRF52840 running the same bootloader as the halves. Set one
 up over SWD: `probe-rs erase --chip nRF52840_xxAA`, then `just bootloader`
@@ -40,6 +40,11 @@ forwarded ports are the only way through.
 Update with `just left_net`, `just right_net` or `just dongle_net`, which run
 `tools/glove-dfu.py`. A device that boots into an update rolls it back on its
 next reset unless the script reaches it again to confirm it.
+
+`just status` (or `just status right` etc.) prints each device's status page:
+how far behind it's running, whether its key scanner has had to wait, what's
+queued, and how its links and radio are doing. The dongle serves its own on
+`10.42.0.1:7400` and forwards `7401` and `7402` to the halves'.
 
 ## Building
 

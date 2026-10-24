@@ -178,11 +178,13 @@ impl ChordingEngine {
 
             heapless::Vec::new()
         } else {
-            // event applies to no chords, just emit it as is
+            // event applies to no chords, so the held keys can't become one:
+            // emit their presses, then the event. Their releases come later,
+            // as they do when they time out in `tick`.
 
             self.purge()
                 .into_iter()
-                .map(|(x, y)| keyberon::layout::Event::Release(x, y))
+                .map(|(x, y)| keyberon::layout::Event::Press(x, y))
                 .chain(core::iter::once(event))
                 .collect()
         }

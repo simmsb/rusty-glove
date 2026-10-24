@@ -53,8 +53,8 @@ static_cell = { version = "2.1.1", features = ["nightly"] }
 usbd-human-interface-device = "0.6.1"
 # only here to raise the socket limits, it must match embassy-net's
 xarxa = { git = "https://github.com/embassy-rs/xarxa", rev = "8f6f33b131deb9ff3290e0e01079537e1ed7b2ad", default-features = false, features = [
-  "tcp-socket-count-8",
-  "tcp-listener-count-4",
+  "tcp-socket-count-16",
+  "tcp-listener-count-8",
 ] }
 
 [features]

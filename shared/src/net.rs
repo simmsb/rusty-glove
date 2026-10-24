@@ -76,6 +76,13 @@ pub mod port {
     pub const DFU_LEFT: u16 = 7301;
     /// On the dongle's USB side, forwarded to [`DFU`] on the right half
     pub const DFU_RIGHT: u16 = 7302;
+    /// On each half, and on the dongle's USB side: a plain text page of how
+    /// it's doing, sent on connecting
+    pub const STATUS: u16 = 7400;
+    /// On the dongle's USB side, forwarded to [`STATUS`] on the left half
+    pub const STATUS_LEFT: u16 = 7401;
+    /// On the dongle's USB side, forwarded to [`STATUS`] on the right half
+    pub const STATUS_RIGHT: u16 = 7402;
 }
 
 /// The network between the dongle and its host, over USB ethernet
@@ -94,10 +101,17 @@ pub mod usb {
     pub const HOST_MAC: [u8; 6] = [0x02, 0x67, 0x6c, 0x76, 0x00, 0x02];
 }
 
+/// The most messages a packet between the halves carries, see
+/// [`crate::reliable`]. Both ends must agree.
+pub const INTERBOARD_BATCH: usize = 8;
+/// The most messages a packet between the right half and the dongle carries.
+/// A batch of keyboard reports must fit one radio frame.
+pub const KEYBOARD_BATCH: usize = 3;
+
 /// The buffer a [`crate::reliable`] link sending messages of up to `tx` bytes
-/// and receiving up to `rx` bytes needs
-pub const fn max_packet_len(tx: usize, rx: usize) -> usize {
-    (if tx > rx { tx } else { rx }) + crate::reliable::HEADER_LEN
+/// and receiving up to `rx` bytes, in batches of up to `batch`, needs
+pub const fn link_packet_len(tx: usize, rx: usize, batch: usize) -> usize {
+    crate::reliable::packet_len(if tx > rx { tx } else { rx }, batch)
 }
 
 /// Size of a packed `NKROBootKeyboardReport`

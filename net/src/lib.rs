@@ -15,7 +15,9 @@ use shared::net::{Node, PAN_ID, PREFIX, PREFIX_LEN};
 
 pub mod dfu;
 pub mod link;
+pub mod pool;
 pub mod radio;
+pub mod status;
 
 /// How long a link can go without hearing from the other end
 pub const LINK_TIMEOUT: Duration = Duration::from_secs(3);

@@ -45,12 +45,15 @@ right_uf2: right
 both_uf2: both
   cat left.uf2 right.uf2 > both.uf2
 
-# flat binaries for updating over the network
+# flat binaries for updating over the network. The ELFs are kept for
+# `just status` to name tasks with.
 left_bin:
   env DEFMT_LOG="off" cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- -O binary target/left.bin
+  cp target/thumbv7em-none-eabihf/release/binary target/left.syms.elf
 
 right_bin:
   env DEFMT_LOG="off" cargo objcopy -p rusty-glove --release --bin binary --no-default-features --features side_right,default_unselected_side,reboot_on_panic -- -O binary target/right.bin
+  cp target/thumbv7em-none-eabihf/release/binary target/right.syms.elf
 
 dongle_bin:
   env DEFMT_LOG="off" cargo objcopy -p dongle --release --bin dongle --no-default-features --features reboot_on_panic -- -O binary target/dongle.bin
@@ -74,6 +77,10 @@ right_confirm:
 
 dongle_confirm:
   tools/glove-dfu.py dongle --confirm-only
+
+# how the halves and the dongle are doing, e.g. `just status right`
+status *DEVICES:
+  tools/glove-status.py {{DEVICES}}
 
 # left_dfu:
 #   env DEFMT_LOG="" cargo objcopy --release -p rusty-glove --bin binary --no-default-features --features side_left,default_unselected_side,reboot_on_panic -- -O ihex target/left.hex

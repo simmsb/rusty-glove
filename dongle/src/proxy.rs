@@ -3,17 +3,19 @@
 //! The stack can't route between its interfaces, so this is how the host
 //! reaches the halves.
 
-use embassy_futures::join::join;
+use core::future::pending;
+
+use embassy_futures::select::select;
 use embassy_net::{
     tcp::{TcpListener, TcpSocket},
     Stack,
 };
 use embassy_time::{with_timeout, Duration};
 use embedded_io_async::{Read, Write};
-use shared::net::{port, usb as usb_net, Node};
+use shared::net::{usb as usb_net, Node};
 
 /// Give up on either end if it goes quiet for this long, a bit longer than
-/// the half waits so it's the one that gives up
+/// a half's DFU service waits so it's the one that gives up
 const TIMEOUT: Duration = Duration::from_secs(75);
 const BUF_LEN: usize = 4096;
 
@@ -33,8 +35,13 @@ async fn pump(mut r: impl Read, mut w: impl Write) {
     _ = w.flush().await;
 }
 
-#[embassy_executor::task(pool_size = 2)]
-pub async fn proxy_task(stack: Stack<'static>, listen_port: u16, target: Node) -> ! {
+#[embassy_executor::task(pool_size = 4)]
+pub async fn proxy_task(
+    stack: Stack<'static>,
+    listen_port: u16,
+    target: Node,
+    target_port: u16,
+) -> ! {
     let mut listener = TcpListener::new(stack).unwrap();
     listener.listen((usb_net::DONGLE_IP, listen_port)).unwrap();
 
@@ -59,14 +66,20 @@ pub async fn proxy_task(stack: Stack<'static>, listen_port: u16, target: Node) -
 
         defmt::info!("Forwarding port {} to {}", listen_port, target);
 
-        match upstream.connect((target.link_local(), port::DFU)).await {
+        match upstream.connect((target.link_local(), target_port)).await {
             Ok(()) => {
                 let (host_r, host_w) = host.split();
                 let (up_r, up_w) = upstream.split();
 
-                // each direction ends when its sender closes, which for the
-                // DFU protocol is the half after it answers, then the host
-                join(pump(host_r, up_w), pump(up_r, host_w)).await;
+                // the halves' services hang up once they've answered, and
+                // the host may be waiting for us to hang up in turn, so
+                // that's the end. The host hanging up first doesn't end it,
+                // the half may still be answering.
+                let to_half = async {
+                    pump(host_r, up_w).await;
+                    pending::<()>().await
+                };
+                select(to_half, pump(up_r, host_w)).await;
 
                 upstream.close();
                 _ = with_timeout(Duration::from_secs(1), upstream.flush()).await;

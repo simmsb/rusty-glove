@@ -1754,6 +1754,7 @@ dependencies = [
  "crc32fast",
  "defmt",
  "fnv",
+ "heapless 0.9.3",
  "log",
  "postcard",
  "serde",

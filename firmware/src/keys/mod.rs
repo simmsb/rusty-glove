@@ -2,9 +2,12 @@ use embassy_executor::Spawner;
 use embassy_futures::select::select;
 use embassy_nrf::gpio::{Input, Output};
 use embassy_sync::{
-    blocking_mutex::raw::ThreadModeRawMutex, channel::Channel, pubsub::PubSubChannel,
+    blocking_mutex::raw::ThreadModeRawMutex,
+    channel::{Channel, TrySendError},
+    pubsub::PubSubChannel,
 };
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Instant, Timer};
+use portable_atomic::Ordering;
 use keyberon::{key_code::KeyCode, layout::Event};
 use packed_struct::PrimitiveEnum;
 use usbd_human_interface_device::device::keyboard::NKROBootKeyboardReport;
@@ -13,7 +16,7 @@ use crate::{
     dongle::publish_keyboard_report,
     interboard::{self},
     messages::device_to_device::DeviceToDevice,
-    side,
+    side, status,
     utils::Ticker,
 };
 
@@ -36,14 +39,19 @@ pub mod scan;
 mod unicode;
 
 /// Raw matrix presses and releases
-pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 4> = Channel::new();
+///
+/// The scanner waits while this is full, and misses quick presses while it
+/// waits, so it's long enough to ride out everything downstream (the links
+/// especially) being slow for a bit.
+pub static MATRIX_EVENTS: Channel<ThreadModeRawMutex, keyberon::layout::Event, 32> =
+    Channel::new();
 
 /// Raw matrix presses and releases -- scanner might miss sending to this channel if delayed
 pub static AUX_MATRIX_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 1> =
     PubSubChannel::new();
 
 /// Chord-processed events
-pub static KEY_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 4, 4, 2> =
+pub static KEY_EVENTS: PubSubChannel<ThreadModeRawMutex, keyberon::layout::Event, 16, 4, 2> =
     PubSubChannel::new();
 
 pub type ScannerInstance<'a> = scan::Scanner<
@@ -75,7 +83,14 @@ async fn matrix_scanner(mut scanner: ScannerInstance<'static>) {
 
     loop {
         for (evt, raw) in scanner.scan() {
-            matrix_events.send(evt).await;
+            if let Err(TrySendError::Full(evt)) = matrix_events.try_send(evt) {
+                // we're not scanning while we wait, see `crate::status`
+                let start = Instant::now();
+                matrix_events.send(evt).await;
+                status::SCAN_STALLS.fetch_add(1, Ordering::Relaxed);
+                status::SCAN_STALL_MAX_US
+                    .fetch_max(start.elapsed().as_micros() as u32, Ordering::Relaxed);
+            }
             aux_matrix_events.publish_immediate(raw);
         }
 
@@ -118,7 +133,12 @@ async fn send_to_other_side(evt: Event) {
         Event::Press(x, y) => DeviceToDevice::KeyPress(x, y),
         Event::Release(x, y) => DeviceToDevice::KeyRelease(x, y),
     };
-    interboard::send_msg(evt, 1).await;
+    if side::is_master() {
+        // the other side only counts these, our own keys mustn't wait on it
+        _ = interboard::try_send_msg(evt, 1);
+    } else {
+        interboard::send_msg(evt, 1).await;
+    }
 }
 
 #[embassy_executor::task]

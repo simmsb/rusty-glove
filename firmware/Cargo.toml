@@ -44,6 +44,7 @@ embassy-executor = { version = "0.10.0", features = [
   "platform-cortex-m",
   "executor-thread",
   "executor-interrupt",
+  "trace",
 ] }
 embassy-futures = { version = "0.1.2" }
 embassy-net = { version = "0.9.1", features = ["tcp", "tcp-listener", "udp", "medium-ieee802154", "sixlowpan-fragmentation", "sixlowpan-reassembly", "icmp-ping-reply"] }
